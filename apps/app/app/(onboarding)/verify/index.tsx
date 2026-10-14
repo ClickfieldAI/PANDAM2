@@ -1,25 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { View } from 'react-native';
+import { type ComponentProps } from 'react';
+import { Alert, Platform, Text, View } from 'react-native';
 
+import { Press } from '@pandam/ui';
+
+import { M } from '@/components/matches/MatchesUI';
+import { CornerDecor } from '@/components/profile/ProfileUI';
 import {
-  Button,
-  Row,
-  Screen,
-  Stack,
-  Text,
-  colors,
-  layout,
-  radii,
-  shadows,
-  spacing,
-} from '@pandam/ui';
-
-import { StepProgress } from '@/components/verification/parts';
+  Lead,
+  PageTitle,
+  ProgressSteps,
+  VerifyShell,
+  WideCta,
+} from '@/components/verification/VerifyUI';
 import { useLogout, useSession } from '@/lib/auth/hooks';
 
-type IconName = keyof typeof Ionicons.glyphMap;
+type IconName = ComponentProps<typeof Ionicons>['name'];
 
+/** One verification step: pale-pink icon tile, title, description and its action. */
 function StepCard({
   icon,
   title,
@@ -42,56 +41,70 @@ function StepCard({
   return (
     <View
       style={{
-        backgroundColor: colors.surface,
-        borderRadius: radii.lg,
-        borderWidth: 1,
-        borderColor: done ? colors.matchBorder : colors.border,
-        padding: spacing.lg,
-        gap: spacing.md,
-        ...shadows.xs,
+        borderRadius: 12,
+        borderWidth: 1.4,
+        borderColor: M.ink,
+        backgroundColor: '#FBFAF7',
+        padding: 14,
+        gap: 14,
       }}
     >
-      <Row gap="md" align="flex-start">
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
         <View
           style={{
-            width: 44,
-            height: 44,
-            borderRadius: radii.md,
-            backgroundColor: done ? colors.matchSoft : colors.accentSoft,
+            width: 80,
+            height: 80,
+            borderRadius: 12,
+            backgroundColor: M.pink,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Ionicons name={icon} size={22} color={done ? colors.match : colors.accent} />
+          <Ionicons name={icon} size={42} color={M.red} />
         </View>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Row justify="space-between" align="center" gap="sm">
-            <Text variant="h3" style={{ flexShrink: 1 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <Text style={{ fontFamily: 'InterTight_700Bold', fontSize: 20, color: M.ink }}>
               {title}
             </Text>
             {done ? (
-              <Row gap="xs" align="center">
-                <Ionicons name="checkmark-circle" size={16} color={colors.match} />
-                <Text variant="caption" tone="match" style={{ fontWeight: '700' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Ionicons name="checkmark-circle" size={17} color={M.red} />
+                <Text style={{ fontFamily: 'InterTight_700Bold', fontSize: 14, color: M.red }}>
                   Verified
                 </Text>
-              </Row>
+              </View>
             ) : null}
-          </Row>
-          <Text variant="bodySm" tone="secondary">
+          </View>
+          <Text
+            style={{
+              fontFamily: 'InterTight_400Regular',
+              fontSize: 15.5,
+              lineHeight: 21,
+              color: '#444',
+              marginTop: 2,
+            }}
+          >
             {description}
           </Text>
         </View>
-      </Row>
+      </View>
       {done ? null : (
-        <Stack gap="xs">
-          <Button label={actionLabel} fullWidth disabled={locked} onPress={onPress} />
+        <View style={{ gap: 6 }}>
+          <WideCta label={actionLabel} arrow={!locked} disabled={locked} onPress={onPress} />
           {locked && lockedHint ? (
-            <Text variant="caption" tone="muted" center>
+            <Text
+              style={{
+                fontFamily: 'InterTight_400Regular',
+                fontSize: 14,
+                color: '#555',
+                textAlign: 'center',
+              }}
+            >
               {lockedHint}
             </Text>
           ) : null}
-        </Stack>
+        </View>
       )}
     </View>
   );
@@ -111,73 +124,90 @@ export default function VerifyIdentityScreen() {
   const faceDone = v?.face === 'verified';
   const allDone = govDone && faceDone;
 
+  const signOut = () =>
+    logout.mutate(undefined, { onSettled: () => router.replace('/(auth)/login') });
+  // Only the "Sign out" word is tappable, and it asks first (Alert is a no-op on web).
+  const confirmSignOut = () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Sign out of Pandam?')) signOut();
+      return;
+    }
+    Alert.alert('Sign out?', 'You will need to sign in again.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign out', style: 'destructive', onPress: signOut },
+    ]);
+  };
+
   return (
-    <Screen scroll padded={false} edges={['top', 'bottom']}>
+    <VerifyShell decor={undefined}>
+      <CornerDecor height={260} />
+      <View style={{ marginTop: 40 }}>
+        <PageTitle>{'Verify Your\nIdentity'}</PageTitle>
+        <Lead style={{ maxWidth: 262 }}>
+          Complete a one-time identity verification to start using Pandam.
+        </Lead>
+      </View>
+
+      <View style={{ marginTop: 22 }}>
+        <ProgressSteps identityDone={allDone} completeDone={allDone} />
+      </View>
+
+      <View style={{ marginTop: 22, gap: 18 }}>
+        <StepCard
+          icon="id-card-outline"
+          title="Government ID"
+          description="Verify your identity using DigiLocker."
+          done={govDone}
+          actionLabel="Verify with DigiLocker"
+          onPress={() => router.push('/(onboarding)/verify/digilocker')}
+        />
+        <StepCard
+          icon="scan-outline"
+          title="Face Verification"
+          description="Take a quick selfie using your device camera."
+          done={faceDone}
+          locked={!govDone}
+          lockedHint="Complete Government ID first."
+          actionLabel="Verify My Face"
+          onPress={() => router.push('/(onboarding)/verify/face')}
+        />
+      </View>
+
+      {allDone ? (
+        <View style={{ marginTop: 18 }}>
+          <WideCta
+            label="Continue"
+            onPress={() => router.replace('/(onboarding)/verify/complete')}
+          />
+        </View>
+      ) : null}
+
       <View
         style={{
-          width: '100%',
-          maxWidth: layout.contentMaxWidth,
-          alignSelf: 'center',
-          paddingHorizontal: layout.gutter,
-          paddingTop: spacing.xl,
-          paddingBottom: spacing['3xl'],
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 5,
+          marginTop: 26,
         }}
       >
-        <Stack gap="xl">
-          <Stack gap="xs">
-            <Text variant="display">Verify Your Identity</Text>
-            <Text variant="body" tone="secondary">
-              Complete a one-time identity verification to start using Pandam.
-            </Text>
-          </Stack>
-
-          <StepProgress current={allDone ? 'complete' : 'identity'} />
-
-          <StepCard
-            icon="id-card-outline"
-            title="Government ID"
-            description="Verify your identity using DigiLocker."
-            done={govDone}
-            actionLabel="Verify with DigiLocker"
-            onPress={() => router.push('/(onboarding)/verify/digilocker')}
-          />
-          <StepCard
-            icon="scan-outline"
-            title="Face Verification"
-            description="Take a quick selfie using your device camera."
-            done={faceDone}
-            locked={!govDone}
-            lockedHint="Complete Government ID first."
-            actionLabel="Verify My Face"
-            onPress={() => router.push('/(onboarding)/verify/face')}
-          />
-
-          {allDone ? (
-            <Button
-              label="Continue"
-              size="lg"
-              fullWidth
-              onPress={() => router.replace('/(onboarding)/verify/complete')}
-            />
-          ) : null}
-
-          <Row gap="xs" justify="center" style={{ flexWrap: 'wrap' }}>
-            <Text variant="caption" tone="muted">
-              Signed in as {user?.email}.
-            </Text>
-            <Text
-              variant="caption"
-              tone="accent"
-              style={{ fontWeight: '700' }}
-              onPress={() =>
-                logout.mutate(undefined, { onSettled: () => router.replace('/(auth)/login') })
-              }
-            >
-              Sign out
-            </Text>
-          </Row>
-        </Stack>
+        <Text style={{ fontFamily: 'InterTight_400Regular', fontSize: 14.5, color: '#555' }}>
+          Signed in as {user?.email}.
+        </Text>
+        <Press
+          haptic="light"
+          scale="md"
+          accessibilityRole="button"
+          accessibilityLabel="Sign out"
+          onPress={confirmSignOut}
+          hitSlop={8}
+        >
+          <Text style={{ fontFamily: 'InterTight_700Bold', fontSize: 14.5, color: M.red }}>
+            Sign out
+          </Text>
+        </Press>
       </View>
-    </Screen>
+    </VerifyShell>
   );
 }

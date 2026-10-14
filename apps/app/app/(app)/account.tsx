@@ -32,6 +32,7 @@ import {
   layout,
   spacing,
   useToast,
+  haptic,
 } from '@pandam/ui';
 
 import { AppHeader } from '@/components/AppHeader';
@@ -132,7 +133,7 @@ export default function AccountScreen() {
   });
   const deleteForm = useForm<DeleteFormValues>({
     resolver: zodResolver(deleteFormSchema),
-    defaultValues: { currentPassword: '', confirm: 'DELETE' as const },
+    defaultValues: { currentPassword: '', confirm: '' as unknown as 'DELETE' },
   });
 
   const activeOthers = (sessions.data ?? []).filter((s) => s.active && !s.current).length;
@@ -203,7 +204,8 @@ export default function AccountScreen() {
                     <DeviceRow
                       key={s.id}
                       session={s}
-                      onRevoke={() =>
+                      onRevoke={() => {
+                        haptic.warning();
                         Alert.alert(
                           s.current ? 'Sign out?' : 'Remove this device?',
                           s.current
@@ -217,8 +219,8 @@ export default function AccountScreen() {
                               onPress: () => revoke.mutate(s.id),
                             },
                           ],
-                        )
-                      }
+                        );
+                      }}
                     />
                   ))}
                 </GroupedRows>

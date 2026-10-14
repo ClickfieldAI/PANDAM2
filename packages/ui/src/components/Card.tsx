@@ -101,6 +101,7 @@ export function Card({
 
   return (
     <Press
+      haptic="light"
       scale="sm"
       lift
       accessibilityRole="button"

@@ -105,6 +105,7 @@ export function SegmentedControl<T extends string>({
           <Press
             key={option.value}
             scale="none"
+            haptic={selected ? 'none' : 'selection'}
             dim={false}
             accessibilityRole="tab"
             accessibilityState={{ selected }}

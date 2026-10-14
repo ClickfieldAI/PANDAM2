@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Image, View } from 'react-native';
 
 import { colors, coverFor, radii } from '../tokens';
@@ -30,6 +30,9 @@ function initials(name: string): string {
  */
 export function Avatar({ name, size = 40, uri, ring = false }: AvatarProps) {
   const [failed, setFailed] = useState(false);
+  // A new URL (fresh upload, or a retry after a flaky network) deserves a fresh
+  // attempt; without this one failed load pins the initials until remount.
+  useEffect(() => setFailed(false), [uri]);
   const showPhoto = !!uri && !failed;
   return (
     <View
@@ -64,6 +67,11 @@ export function Avatar({ name, size = 40, uri, ring = false }: AvatarProps) {
               color: colors.textInverse,
               fontWeight: '800',
               fontSize: size * 0.38,
+              // Explicit line box: without it the custom font's glyph is clipped
+              // at the top (the "O" renders as a "U") on iOS.
+              lineHeight: Math.round(size * 0.5),
+              includeFontPadding: false,
+              textAlign: 'center',
               letterSpacing: -0.3,
             }}
           >

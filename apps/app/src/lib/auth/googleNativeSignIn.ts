@@ -18,6 +18,7 @@
  * can't support it — exactly mirroring how `isAppleSignInAvailable()`
  * handles the same class of problem for Apple sign-in.
  */
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
 
 type GoogleSigninModule = typeof import('@react-native-google-signin/google-signin');
@@ -27,12 +28,18 @@ let loaded: GoogleSigninModule | null | undefined;
 
 function requireGoogleSignin(): GoogleSigninModule {
   if (loaded === undefined) {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports -- must be lazy, see doc comment above
-      loaded = require('@react-native-google-signin/google-signin') as GoogleSigninModule;
-    } catch {
+    // Expo Go never contains this native module. Even inside try/catch, Metro
+    // reports a failed first `require` to the global handler, which shows a
+    // red error screen in dev — so don't attempt it there at all.
+    if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) {
       loaded = null;
-    }
+    } else
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- must be lazy, see doc comment above
+        loaded = require('@react-native-google-signin/google-signin') as GoogleSigninModule;
+      } catch {
+        loaded = null;
+      }
   }
   if (!loaded) {
     throw new Error(

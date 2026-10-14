@@ -8,11 +8,7 @@ import {
   EmptyState,
   Row,
   Screen,
-  SearchInput,
-  SegmentedControl,
-  Skeleton,
   SkeletonGrid,
-  Stack,
   Text,
   colors,
   layout,
@@ -21,9 +17,17 @@ import {
 } from '@pandam/ui';
 
 import { AddCategorySheet } from '@/components/AddCategorySheet';
-import { PandamBackground } from '@/components/brand/PandamBackground';
-import { CategoryRail } from '@/components/CategoryFilter';
-import { ItemCard } from '@/components/ItemCard';
+import {
+  CategoryTiles,
+  DiscoverDecor,
+  DiscoverHeader,
+  FeatureCard,
+  GRID_GAP,
+  GUTTER,
+  GridCard,
+  ResultsRow,
+  type SortKey,
+} from '@/components/discover/DiscoverUI';
 import { ErrorState } from '@/components/states';
 import { demoCities, demoDiscover, demoMergePages, demoQuery } from '@/dummy';
 import { type MarketKind } from '@/lib/api/market';
@@ -32,11 +36,6 @@ import { useBrowseCategories } from '@/lib/hooks/useCategories';
 import { useDebounced } from '@/lib/hooks/useDebounced';
 import { useDiscover, useListingCities } from '@/lib/hooks/useMarket';
 
-const KIND_OPTIONS = [
-  { value: 'listing' as const, label: 'I HAVE', tone: 'accent' as const },
-  { value: 'need' as const, label: 'I NEED', tone: 'need' as const },
-];
-
 export default function DiscoverScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ category?: string; owner?: string; city?: string }>();
@@ -44,6 +43,9 @@ export default function DiscoverScreen() {
   const [rawQuery, setRawQuery] = useState('');
   const [categoryId, setCategoryId] = useState<string | null>(params.category ?? null);
   const [city, setCity] = useState<string | null>(params.city ?? null);
+  const [showFilters, setShowFilters] = useState(!!params.city);
+  const [sort, setSort] = useState<SortKey>('newest');
+  const [sortOpen, setSortOpen] = useState(false);
   const q = useDebounced(rawQuery.trim(), 350);
 
   const categories = useBrowseCategories();
@@ -63,9 +65,16 @@ export default function DiscoverScreen() {
   const { user: me } = useSession();
   // Discover is for OTHER people's items — your own listing or request is not
   // an opportunity for you (it lives on your Profile instead).
-  const items = (discover.data?.pages.flatMap((p) => p.items) ?? []).filter(
+  const unsorted = (discover.data?.pages.flatMap((p) => p.items) ?? []).filter(
     (i) => i.ownerId !== me?.id,
   );
+  // The API returns newest first; the sort control reorders what is loaded.
+  const items =
+    sort === 'oldest'
+      ? [...unsorted].sort((x, y) => x.createdAt - y.createdAt)
+      : sort === 'title'
+        ? [...unsorted].sort((x, y) => x.title.localeCompare(y.title))
+        : unsorted;
   // Marketplace rhythm: the freshest item leads as a large feature card.
   const featured = items.length > 3 ? items[0] : null;
   const gridItems = featured ? items.slice(1) : items;
@@ -79,6 +88,8 @@ export default function DiscoverScreen() {
    */
   const { width } = useWindowDimensions();
   const columns = width >= 620 ? 3 : 2;
+  const rail = Math.min(width, 720);
+  const cardW = Math.floor((rail - GUTTER * 2 - GRID_GAP * (columns - 1)) / columns);
 
   const isHave = kind === 'listing';
   const tone = isHave ? 'accent' : 'need';
@@ -89,97 +100,48 @@ export default function DiscoverScreen() {
     setCity(null);
   };
 
-  /*
-   * The search box and the HAVE/NEED switch stay pinned; the taxonomy filters
-   * and the result count scroll away with the grid.
-   *
-   * Before, all five controls were pinned, which on a 375pt screen left less
-   * than half the viewport for results — you had to scroll past the filters
-   * to see whether the filters had found anything. Search and the kind switch
-   * are the two you reach for repeatedly, so those are the two that stay.
-   */
-  const pinned = (
-    // The rule spans the full width; the controls inside it stay in the same
-    // centred column as the grid, so nothing is left hanging on a wide screen.
-    <View
-      style={{
-        borderBottomWidth: 1,
-        borderBottomColor: colors.borderSoft,
-        overflow: 'hidden',
-      }}
-    >
-      <PandamBackground variant="discover" />
-      <View
-        style={{
-          width: '100%',
-          maxWidth: layout.contentMaxWidth,
-          alignSelf: 'center',
-          paddingHorizontal: layout.gutter,
-          paddingTop: spacing.md,
-          paddingBottom: spacing.md,
-          gap: spacing.md,
-        }}
-      >
-        <View style={{ gap: 2 }}>
-          <Text variant="overline" tone={tone} caps>
-            {isHave ? 'What people have' : 'What people need'}
-          </Text>
-          <Text
-            style={{
-              fontFamily: 'InterTight_800ExtraBold',
-              fontSize: 34,
-              lineHeight: 36,
-              letterSpacing: -1,
-              color: colors.textPrimary,
-              textTransform: 'uppercase',
-            }}
-          >
-            Discover
-          </Text>
-        </View>
-        <SearchInput
-          icon={<Ionicons name="search" size={17} color={colors.textMuted} />}
-          placeholder={isHave ? 'Search what people have' : 'Search what people need'}
-          value={rawQuery}
-          onChangeText={setRawQuery}
-          autoCapitalize="none"
-          onClear={() => setRawQuery('')}
-          clearIcon={<Ionicons name="close-circle" size={17} color={colors.textMuted} />}
-        />
-        <SegmentedControl options={KIND_OPTIONS} value={kind} onChange={setKind} />
-      </View>
-    </View>
-  );
+  const needColor = colors.need;
+  const openItem = (id: string) =>
+    router.push(isHave ? `/(app)/listing/${id}` : `/(app)/need/${id}`);
 
   const scrollingHeader = (
-    <Stack gap="lg" style={{ paddingBottom: spacing.lg }}>
+    <View style={{ paddingBottom: spacing.sm }}>
+      <DiscoverDecor />
+      <DiscoverHeader
+        isHave={isHave}
+        needColor={needColor}
+        query={rawQuery}
+        onQuery={setRawQuery}
+        filterActive={showFilters || !!city}
+        onFilter={() => setShowFilters((v) => !v)}
+        onKind={(have) => setKind(have ? 'listing' : 'need')}
+      />
       {categories.data ? (
-        <CategoryRail
+        <CategoryTiles
           categories={categories.data}
           selectedId={categoryId}
           onSelect={setCategoryId}
-          tone={tone}
           onAdd={() => setAddingCategory(true)}
+          accent={tone === 'need' ? needColor : '#FF3B2F'}
         />
       ) : (
-        <Row gap="sm">
+        <Row gap="sm" style={{ paddingHorizontal: GUTTER, marginTop: 16 }}>
           {[0, 1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} width={72} height={58} radius={radii.md} />
+            <View
+              key={i}
+              style={{ width: 56, height: 56, borderRadius: radii.lg, backgroundColor: '#EDEBE6' }}
+            />
           ))}
         </Row>
       )}
 
-      {/*
-        Barter means meeting in person, so where something is matters as much
-        as what it is. Only cities that actually have listings are offered, and
-        the row is hidden entirely when nobody has set one.
-      */}
-      {cities.data && cities.data.length > 0 ? (
+      {/* Where something is matters as much as what it is: the filter button reveals cities. */}
+      {showFilters && cities.data && cities.data.length > 0 ? (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={{ marginHorizontal: -layout.gutter }}
-          contentContainerStyle={{ gap: spacing.sm, paddingHorizontal: layout.gutter }}
+          style={{ marginTop: 6 }}
+          contentContainerStyle={{ gap: spacing.sm, paddingHorizontal: GUTTER }}
         >
           <Chip
             label="Anywhere"
@@ -209,63 +171,56 @@ export default function DiscoverScreen() {
       ) : null}
 
       {featured ? (
-        <ItemCard
-          item={featured}
-          variant="feature"
-          onPress={() =>
-            router.push(isHave ? `/(app)/listing/${featured.id}` : `/(app)/need/${featured.id}`)
-          }
-        />
+        <FeatureCard item={featured} needColor={needColor} onPress={() => openItem(featured.id)} />
       ) : null}
 
       {items.length > 0 ? (
-        <Row justify="space-between">
-          <Text variant="caption" tone="muted" numeric>
-            {items.length} {items.length === 1 ? 'result' : 'results'}
-            {activeFilters > 0 ? ` · ${activeFilters} filter${activeFilters === 1 ? '' : 's'}` : ''}
-          </Text>
-          {activeFilters > 0 ? (
-            <Text variant="label" tone={tone} onPress={clearFilters}>
-              Clear
-            </Text>
-          ) : null}
-        </Row>
+        <ResultsRow
+          count={items.length}
+          sort={sort}
+          open={sortOpen}
+          onToggle={() => setSortOpen((v) => !v)}
+          onPick={(k) => {
+            setSort(k);
+            setSortOpen(false);
+          }}
+          trailing={
+            activeFilters > 0 ? (
+              <Text variant="label" tone={tone} onPress={clearFilters}>
+                Clear
+              </Text>
+            ) : null
+          }
+        />
       ) : null}
-    </Stack>
+    </View>
   );
 
   return (
     <Screen padded={false}>
-      {pinned}
-
       <FlatList
         data={gridItems}
         key={`${kind}-${columns}`}
         keyExtractor={(it) => it.id}
         numColumns={columns}
-        columnWrapperStyle={{ gap: spacing.md }}
+        columnWrapperStyle={{ gap: GRID_GAP, paddingHorizontal: GUTTER }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           width: '100%',
           maxWidth: layout.contentMaxWidth,
           alignSelf: 'center',
-          paddingHorizontal: layout.gutter,
-          paddingTop: spacing.lg,
           paddingBottom: layout.tabBarInset,
-          gap: spacing.md,
+          gap: GRID_GAP,
           flexGrow: 1,
         }}
         ListHeaderComponent={scrollingHeader}
         renderItem={({ item }) => (
-          <View style={{ flex: 1 / columns }}>
-            <ItemCard
-              item={item}
-              variant="grid"
-              onPress={() =>
-                router.push(isHave ? `/(app)/listing/${item.id}` : `/(app)/need/${item.id}`)
-              }
-            />
-          </View>
+          <GridCard
+            item={item}
+            needColor={needColor}
+            width={cardW}
+            onPress={() => openItem(item.id)}
+          />
         )}
         onEndReachedThreshold={0.4}
         onEndReached={() => {

@@ -169,6 +169,7 @@ export function Button({
   return (
     <Press
       scale="sm"
+      haptic="light"
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: !!isDisabled, busy: loading }}

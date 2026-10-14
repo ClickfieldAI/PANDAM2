@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import {
   Platform,
   Pressable,
@@ -6,7 +6,14 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 
+import { type HapticKind, haptic } from '../haptics';
 import { colors, shadows, timings } from '../tokens';
 
 /** What the caller can paint differently per interaction state. */
@@ -41,6 +48,11 @@ export interface PressProps extends Omit<PressableProps, 'style' | 'children'> {
   style?: StyleProp<ViewStyle>;
   /** Per-state overrides, so components describe their own feedback. */
   states?: PressStateStyles;
+  /**
+   * Tactile feedback on a confirmed tap (fires from `onPress`, so a drag that
+   * turns into a scroll stays silent). `none` by default; opt in per control.
+   */
+  haptic?: HapticKind;
 }
 
 /**
@@ -48,7 +60,12 @@ export interface PressProps extends Omit<PressableProps, 'style' | 'children'> {
  * seen, which is the point — the feedback should register as the surface
  * responding, not as an animation playing.
  */
-const SCALE = { sm: 0.985, md: 0.975, lg: 0.955, none: 1 } as const;
+const NATIVE = Platform.OS !== 'web';
+// Animated only on native: wrapping Pressable in an animated component breaks
+// `onPress` on React Native Web (see notes below), so web keeps state styles.
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+const SCALE = { sm: 0.96, md: 0.94, lg: 0.9, none: 1 } as const;
 
 /**
  * The tappable wrapper behind every interactive surface in the product.
@@ -84,11 +101,36 @@ export function Press({
   onFocus,
   onBlur,
   disabled,
+  haptic: hapticKind = 'none',
+  onPress,
   ...rest
 }: PressProps) {
   const [pressed, setPressed] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
+
+  // Native press dip is a spring on the UI thread, not a React re-render, so
+  // it stays smooth while the JS thread is busy (lists, queries).
+  const reduceMotion = useReducedMotion();
+  const dip = useSharedValue(1);
+  const dipStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: dip.value }],
+  }));
+  useEffect(() => {
+    if (!NATIVE) return;
+    const down = pressed && !disabled;
+    const to = down ? SCALE[scale] : 1;
+    dip.value = reduceMotion ? to : withSpring(to, { damping: 18, stiffness: 420, mass: 0.6 });
+  }, [pressed, disabled, scale, reduceMotion, dip]);
+
+  const handlePress = useCallback<NonNullable<PressableProps['onPress']>>(
+    (e) => {
+      if (hapticKind === 'light') haptic.light();
+      else if (hapticKind === 'selection') haptic.selection();
+      onPress?.(e);
+    },
+    [hapticKind, onPress],
+  );
 
   const handlePressIn = useCallback<NonNullable<PressableProps['onPressIn']>>(
     (e) => {
@@ -145,11 +187,14 @@ export function Press({
   const isHovered = hovered && !disabled && !pressed;
   const isFocused = focused && !disabled;
 
+  const Root = NATIVE ? AnimatedPressable : Pressable;
+
   return (
-    <Pressable
+    <Root
       accessibilityRole="button"
       disabled={disabled}
       {...rest}
+      onPress={onPress ? handlePress : undefined}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onHoverIn={handleHoverIn}
@@ -169,7 +214,8 @@ export function Press({
         lift && isHovered ? [{ transform: [{ translateY: -2 }] }, shadows.md] : null,
         isHovered && states?.hover,
         isPressed && [
-          { transform: [{ scale: SCALE[scale] }] },
+          // Scale is web-only here; native gets the animated dip appended below.
+          NATIVE ? null : { transform: [{ scale: SCALE[scale] }] },
           lift ? shadows.xs : null,
           dim ? { opacity: 0.94 } : null,
           states?.pressed,
@@ -185,9 +231,10 @@ export function Press({
             : null,
           states?.focused,
         ],
+        NATIVE ? dipStyle : null,
       ]}
     >
       {children}
-    </Pressable>
+    </Root>
   );
 }

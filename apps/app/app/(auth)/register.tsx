@@ -8,14 +8,13 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   TextInput,
   View,
   useWindowDimensions,
 } from 'react-native';
 
-import { Notice, Screen, Text, colors, useToast } from '@pandam/ui';
+import { Notice, Press, Screen, Text, colors, haptic, useToast } from '@pandam/ui';
 
 import { AvatarPicker } from '@/components/AvatarPicker';
 import { OAuthButtons, OAuthDivider } from '@/components/brand/OAuthButtons';
@@ -453,28 +452,46 @@ export default function RegisterScreen() {
     defaultValues: { email: '', password: '', displayName: '', username: '' },
   });
 
-  const onSubmit = handleSubmit((values) => {
-    const payload: RegisterInput = {
-      email: values.email,
-      password: values.password,
-      displayName: values.displayName,
-      username: values.username?.trim() ? values.username.trim() : undefined,
-    };
-    register.mutate(payload, {
-      onSuccess: async () => {
-        // The photo can only be stored once the account exists. A failed
-        // upload never blocks sign-up — it can be added later from Profile.
-        if (photo) {
-          try {
-            await uploadAvatar.mutateAsync(photo);
-          } catch {
-            toast.error('Your photo could not be uploaded. You can add it from Profile.');
+  const onSubmit = handleSubmit(
+    (values) => {
+      const payload: RegisterInput = {
+        email: values.email,
+        password: values.password,
+        displayName: values.displayName,
+        username: values.username?.trim() ? values.username.trim() : undefined,
+      };
+      register.mutate(payload, {
+        onSuccess: async () => {
+          // The photo can only be stored once the account exists. A failed
+          // upload never blocks sign-up — it can be added later from Profile.
+          if (photo) {
+            try {
+              await uploadAvatar.mutateAsync(photo);
+            } catch {
+              toast.error('Your photo could not be uploaded. You can add it from Profile.');
+            }
           }
-        }
-        router.replace('/(app)/(tabs)');
-      },
-    });
-  });
+          haptic.success();
+          router.replace('/(app)/(tabs)');
+        },
+        onError: (err) => {
+          console.warn('[register] sign-up failed:', err instanceof Error ? err.message : err);
+          toast.error(
+            err instanceof ApiError
+              ? err.message
+              : 'We could not reach PANDAM. Check your connection and try again.',
+          );
+        },
+      });
+    },
+    (errors) => {
+      // A failed validation sends no request at all, so without this the tap
+      // looks like it did nothing — say which fields need attention.
+      const fields = Object.keys(errors).join(', ');
+      console.warn('[register] form not submitted, invalid fields:', fields);
+      toast.error(`Please check: ${fields}.`);
+    },
+  );
 
   const password = watch('password');
   const contentW = Math.min(width, 480);
@@ -673,7 +690,9 @@ export default function RegisterScreen() {
                       onBlur={field.onBlur}
                       error={fieldState.error?.message}
                       trailing={
-                        <Pressable
+                        <Press
+                          scale="lg"
+                          haptic="selection"
                           accessibilityRole="button"
                           accessibilityLabel={reveal ? 'Hide password' : 'Show password'}
                           hitSlop={10}
@@ -684,7 +703,7 @@ export default function RegisterScreen() {
                             size={20}
                             color={INK}
                           />
-                        </Pressable>
+                        </Press>
                       }
                     />
                     <PasswordRequirements value={password ?? ''} />
@@ -701,21 +720,24 @@ export default function RegisterScreen() {
                 </Notice>
               ) : null}
 
-              <Pressable
+              <Press
+                scale="sm"
+                haptic="light"
                 accessibilityRole="button"
                 accessibilityLabel="Create account"
                 disabled={register.isPending || uploadAvatar.isPending || formState.isSubmitting}
                 onPress={onSubmit}
-                style={({ pressed }) => ({
+                states={{ pressed: { backgroundColor: RED_PRESSED } }}
+                style={{
                   height: 52,
                   borderRadius: 14,
-                  backgroundColor: pressed ? RED_PRESSED : RED,
+                  backgroundColor: RED,
                   opacity: register.isPending || uploadAvatar.isPending ? 0.7 : 1,
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'center',
                   paddingHorizontal: 20,
-                })}
+                }}
               >
                 <Text
                   style={{
@@ -733,7 +755,7 @@ export default function RegisterScreen() {
                       : 'Create account'}
                 </Text>
                 <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-              </Pressable>
+              </Press>
             </View>
 
             <View

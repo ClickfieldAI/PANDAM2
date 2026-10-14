@@ -1,93 +1,81 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Redirect, useRouter } from 'expo-router';
 import { View } from 'react-native';
 
-import { Button, Row, Screen, Stack, Text, colors, layout, radii, spacing } from '@pandam/ui';
-
-import { StepProgress } from '@/components/verification/parts';
+import {
+  CenterBody,
+  CenterTitle,
+  Concrete,
+  ProgressSteps,
+  RedShape,
+  SuccessBadge,
+  SummaryRow,
+  VerifyShell,
+  WideCta,
+  useScreen,
+} from '@/components/verification/VerifyUI';
 import { useSession } from '@/lib/auth/hooks';
 
-function Verified({ label, value = 'Verified' }: { label: string; value?: string }) {
-  return (
-    <Row justify="space-between" align="center" style={{ paddingVertical: spacing.sm }}>
-      <Row gap="sm" align="center">
-        <Ionicons name="checkmark-circle" size={20} color={colors.match} />
-        <Text variant="bodyStrong">{label}</Text>
-      </Row>
-      <Text variant="label" tone="match" style={{ fontWeight: '700' }}>
-        {value}
-      </Text>
-    </Row>
-  );
-}
-
-/** "Identity Verification Complete" — the last onboarding step before Home. */
+/**
+ * "Identity Verification Complete" — the last onboarding step before Home.
+ * Only reachable once the account really is verified; each row reflects the
+ * session's own per-step status rather than a hard-coded "Verified".
+ */
 export default function VerificationCompleteScreen() {
   const router = useRouter();
   const { user } = useSession();
+  const { w } = useScreen();
   if (user?.identityVerification?.status !== 'verified') {
     return <Redirect href="/(onboarding)/verify" />;
   }
+  const v = user.identityVerification;
+  const govOk = v.governmentId === 'verified';
+  const faceOk = v.face === 'verified';
 
   return (
-    <Screen scroll padded={false} edges={['top', 'bottom']}>
+    <VerifyShell
+      decor={
+        <>
+          <RedShape
+            kind="lobe"
+            width={w * 0.4}
+            height={w * 0.37}
+            style={{ right: -w * 0.14, top: 40 }}
+          />
+          <Concrete size={w * 0.26} rotate={20} style={{ right: -w * 0.08, top: 62 }} />
+        </>
+      }
+    >
+      <View style={{ marginTop: 8 }}>
+        <ProgressSteps identityDone completeDone />
+      </View>
+      <View style={{ marginTop: 26, gap: 14 }}>
+        <SuccessBadge shield size={104} />
+        <CenterTitle size={30}>{'Identity Verification\nComplete'}</CenterTitle>
+        <CenterBody>Your Pandam account is now verified.</CenterBody>
+      </View>
       <View
         style={{
-          width: '100%',
-          maxWidth: layout.contentMaxWidth,
-          alignSelf: 'center',
-          paddingHorizontal: layout.gutter,
-          paddingTop: spacing.xl,
-          paddingBottom: spacing['3xl'],
+          marginTop: 18,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: '#CFCDC8',
+          backgroundColor: '#FBFAF7',
+          paddingHorizontal: 14,
+          paddingVertical: 6,
         }}
       >
-        <Stack gap="xl">
-          <StepProgress current="complete" />
-          <Stack gap="md" align="center" style={{ paddingTop: spacing.lg }}>
-            <View
-              style={{
-                width: 84,
-                height: 84,
-                borderRadius: 42,
-                backgroundColor: colors.match,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Ionicons name="shield-checkmark" size={42} color={colors.textInverse} />
-            </View>
-            <Text variant="display" center>
-              Identity Verification Complete
-            </Text>
-            <Text variant="body" tone="secondary" center>
-              Your Pandam account is now verified.
-            </Text>
-          </Stack>
-
-          <View
-            style={{
-              backgroundColor: colors.surface,
-              borderRadius: radii.lg,
-              borderWidth: 1,
-              borderColor: colors.matchBorder,
-              paddingHorizontal: spacing.lg,
-              paddingVertical: spacing.sm,
-            }}
-          >
-            <Verified label="Government ID" />
-            <Verified label="Face Verification" />
-            {/* PANDAM has no phone number / phone verification, so we do not claim one. */}
-            <Verified label="Account" value="Active" />
-          </View>
-
-          <Button
-            label="Continue to Pandam"
-            size="lg"
-            fullWidth
-            onPress={() => router.replace('/(app)/(tabs)')}
-          />
-        </Stack>
+        <SummaryRow label="Government ID" status={govOk ? 'Verified' : 'Pending'} ok={govOk} />
+        <SummaryRow
+          label="Face Verification"
+          status={faceOk ? 'Verified' : 'Pending'}
+          ok={faceOk}
+        />
+        {/* PANDAM has no phone number / phone verification, so we do not claim one. */}
+        <SummaryRow label="Account" status="Active" ok />
       </View>
-    </Screen>
+      <View style={{ marginTop: 18 }}>
+        <WideCta label="Continue to Pandam" onPress={() => router.replace('/(app)/(tabs)')} />
+      </View>
+    </VerifyShell>
   );
 }

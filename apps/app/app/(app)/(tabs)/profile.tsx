@@ -1,45 +1,37 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { View } from 'react-native';
+import { Alert, Platform, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 
 import { type MarketItem } from '@pandam/types';
-import {
-  Badge,
-  Button,
-  Card,
-  Divider,
-  EmptyState,
-  IconButton,
-  IconFrame,
-  ListRow,
-  Rail,
-  Row,
-  Screen,
-  SectionHeader,
-  SkeletonList,
-  Stack,
-  Text,
-  colors,
-  layout,
-  radii,
-  spacing,
-  shadows,
-  useToast,
-} from '@pandam/ui';
+import { EmptyState, Screen, SkeletonList, useToast } from '@pandam/ui';
 
-import { IS_DEMO_DATA, demoMergeList, demoMyListings, demoMyNeeds } from '@/dummy';
-import { useTransactions } from '@/lib/hooks/useTransactions';
 import { AppHeader } from '@/components/AppHeader';
 import { AvatarPicker } from '@/components/AvatarPicker';
-import { PandamBackground } from '@/components/brand/PandamBackground';
-import { ItemCard } from '@/components/ItemCard';
+import { M } from '@/components/matches/MatchesUI';
+import {
+  AvatarRing,
+  BigHeader,
+  CornerDecor,
+  EndDecor,
+  EmptyNeed,
+  GUTTER,
+  MenuRow,
+  OutlinedButton,
+  Panel,
+  ProfileItemCard,
+  SectionTitle,
+  SettingsButton,
+  StatTiles,
+} from '@/components/profile/ProfileUI';
 import { ErrorState } from '@/components/states';
+import { IS_DEMO_DATA, demoMergeList, demoMyListings, demoMyNeeds } from '@/dummy';
 import { type MarketKind } from '@/lib/api/market';
 import { mediaSrc } from '@/lib/api/media';
 import { useLogout, useSession } from '@/lib/auth/hooks';
 import { useMyItems } from '@/lib/hooks/useMarket';
 import { useUploadAvatar } from '@/lib/hooks/useMedia';
 import { useUnreadNotificationCount } from '@/lib/hooks/useNotifications';
+import { useTransactions } from '@/lib/hooks/useTransactions';
 
 function MyItemsSection({
   kind,
@@ -50,6 +42,8 @@ function MyItemsSection({
   onOpen: (item: MarketItem) => void;
   onAdd: () => void;
 }) {
+  const { width } = useWindowDimensions();
+  const cardW = Math.floor((Math.min(width, 720) - GUTTER * 2 - 12) / 2);
   const q = demoMergeList(useMyItems(kind), kind === 'listing' ? demoMyListings : demoMyNeeds);
   const isHave = kind === 'listing';
   const items = q.data ?? [];
@@ -57,28 +51,24 @@ function MyItemsSection({
 
   return (
     <View>
-      <SectionHeader
+      <SectionTitle
         title={isHave ? 'Things I have' : 'Things I need'}
         subtitle={items.length > 0 ? `${live} live of ${items.length}` : undefined}
         actionLabel="Add"
         onAction={onAdd}
       />
-
+      <View style={{ height: 12 }} />
       {q.isPending ? (
-        <SkeletonList count={1} />
+        <View style={{ paddingHorizontal: GUTTER }}>
+          <SkeletonList count={1} />
+        </View>
       ) : q.isError ? (
-        <ErrorState error={q.error} onRetry={() => void q.refetch()} />
+        <View style={{ paddingHorizontal: GUTTER }}>
+          <ErrorState error={q.error} onRetry={() => void q.refetch()} />
+        </View>
       ) : items.length === 0 ? (
-        <EmptyState
-          size="inline"
-          tone={isHave ? 'accent' : 'need'}
-          icon={
-            <Ionicons
-              name={isHave ? 'cube-outline' : 'search-outline'}
-              size={20}
-              color={isHave ? colors.accent : colors.need}
-            />
-          }
+        <EmptyNeed
+          icon={isHave ? 'cube-outline' : 'search'}
           title={isHave ? 'Nothing listed yet' : 'Nothing requested yet'}
           body={
             isHave
@@ -86,50 +76,19 @@ function MyItemsSection({
               : 'Say what you are after — it is half of every match.'
           }
           actionLabel={isHave ? 'Add something I have' : 'Add something I need'}
-          actionVariant={isHave ? 'primary' : 'need'}
           onAction={onAdd}
         />
       ) : (
-        <Rail>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: GUTTER, gap: 12 }}
+        >
           {items.map((item) => (
-            <ItemCard
-              key={item.id}
-              item={item}
-              variant="rail"
-              showOwner={false}
-              showStatus
-              onPress={() => onOpen(item)}
-            />
+            <ProfileItemCard key={item.id} item={item} width={cardW} onPress={() => onOpen(item)} />
           ))}
-        </Rail>
+        </ScrollView>
       )}
-    </View>
-  );
-}
-
-/**
- * The unread count on a settings row.
- *
- * Clay rather than terracotta: terracotta means "I HAVE" everywhere else in
- * the product, and a green count here would read as a quantity of something
- * rather than as something needing attention.
- */
-function CountBadge({ count }: { count: number }) {
-  return (
-    <View
-      style={{
-        minWidth: 20,
-        height: 20,
-        paddingHorizontal: 6,
-        borderRadius: radii.pill,
-        backgroundColor: colors.need,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <Text variant="caption" numeric tone="inverse" style={{ fontWeight: '600' }}>
-        {count > 9 ? '9+' : count}
-      </Text>
     </View>
   );
 }
@@ -160,76 +119,54 @@ export default function ProfileScreen() {
     );
   }
 
+  const signOut = () =>
+    logout.mutate(undefined, { onSettled: () => router.replace('/(auth)/login') });
+  // A stray tap must never end the session: ask first (Alert is a no-op on web).
+  const confirmSignOut = () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Sign out of Pandam?')) signOut();
+      return;
+    }
+    Alert.alert('Sign out?', 'You will need to sign in again.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign out', style: 'destructive', onPress: signOut },
+    ]);
+  };
+
+  const verified = user?.identityVerification?.status === 'verified';
   const location = [profile.locationCity, profile.locationRegion, profile.locationCountry]
     .filter(Boolean)
     .join(', ');
 
-  const chevron = <Ionicons name="chevron-forward" size={16} color={colors.textFaint} />;
-
   return (
-    <Screen scroll padded={false} tabBarInset>
-      <View style={{ overflow: 'hidden' }}>
-        <PandamBackground variant="profile" />
+    <Screen scroll padded={false} tabBarInset background={M.bg}>
+      <View style={{ width: '100%', maxWidth: 720, alignSelf: 'center' }}>
+        <CornerDecor />
+        <BigHeader
+          eyebrow="04"
+          title="Profile"
+          subtitle="Your items, interests and activity."
+          right={<SettingsButton onPress={() => router.push('/(app)/account')} />}
+        />
+
+        {/* ------------------------------------------------- profile card -- */}
         <View
           style={{
-            width: '100%',
-            maxWidth: layout.contentMaxWidth,
-            alignSelf: 'center',
-            paddingHorizontal: layout.gutter,
-            paddingTop: spacing.lg,
+            marginHorizontal: GUTTER,
+            marginTop: 16,
+            borderRadius: 14,
+            borderWidth: 1.4,
+            borderColor: M.ink,
+            backgroundColor: M.bg,
+            padding: 16,
+            gap: 14,
           }}
         >
-          <AppHeader
-            eyebrow="04"
-            title="Profile"
-            subtitle="Your items, interests and activity."
-            right={
-              <IconButton
-                variant="plain"
-                size={40}
-                icon={<Ionicons name="settings-outline" size={19} color={colors.textPrimary} />}
-                accessibilityLabel="Account settings"
-                onPress={() => router.push('/(app)/account')}
-                style={{ backgroundColor: colors.surface, ...shadows.xs }}
-              />
-            }
-          />
-        </View>
-      </View>
-      <View
-        style={{
-          width: '100%',
-          maxWidth: layout.contentMaxWidth,
-          alignSelf: 'center',
-          paddingHorizontal: layout.gutter,
-          paddingTop: spacing.sm,
-        }}
-      >
-        {/* ---------------------------------------------------------- you -- */}
-        {/*
-          No gradient banner. A coloured slab behind your own name and photo
-          made the profile look like a membership card; on the page background
-          the avatar and the name are the strongest things on screen, which is
-          what a profile should lead with.
-        */}
-        <Stack
-          gap="2xl"
-          style={{
-            backgroundColor: colors.surface,
-            borderRadius: radii['2xl'],
-            borderWidth: 1,
-            borderColor: colors.border,
-            padding: spacing.xl,
-            ...shadows.sm,
-          }}
-        >
-          <Row gap="lg" align="flex-start">
-            <View
-              style={{ borderRadius: radii.pill, borderWidth: 3, borderColor: colors.accentSoft }}
-            >
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 14 }}>
+            <AvatarRing size={76}>
               <AvatarPicker
                 name={profile.displayName}
-                size={72}
+                size={76}
                 uri={mediaSrc(profile.avatarUrl)}
                 busy={uploadAvatar.isPending}
                 onPicked={(uri) =>
@@ -240,97 +177,88 @@ export default function ProfileScreen() {
                   })
                 }
               />
-            </View>
-
-            <View style={{ flex: 1, minWidth: 0, gap: 2, paddingTop: spacing.xs }}>
-              <Text variant="display" numberOfLines={1}>
-                {profile.displayName}
-              </Text>
-              <Text variant="bodySm" tone="muted" numberOfLines={1}>
-                {profile.username ? `@${profile.username}` : user?.email}
-              </Text>
-              {user?.identityVerification?.status === 'verified' ? (
-                <Row gap="xs" style={{ marginTop: 2 }}>
-                  <Ionicons name="shield-checkmark" size={12} color={colors.match} />
-                  <Text variant="caption" tone="match" style={{ fontWeight: '700' }}>
-                    Identity Verified ✓
-                  </Text>
-                </Row>
-              ) : null}
-              {location ? (
-                <Row gap="xs" style={{ marginTop: 2 }}>
-                  <Ionicons name="location-outline" size={12} color={colors.textMuted} />
-                  <Text variant="caption" tone="muted" numberOfLines={1}>
-                    {location}
-                  </Text>
-                </Row>
-              ) : null}
-            </View>
-
-            <Button
-              label="Edit"
-              variant="secondary"
-              size="sm"
-              onPress={() => router.push('/(app)/edit-profile')}
-            />
-          </Row>
-
-          {/* Marketplace identity: what you bring, what you seek, what you've done. */}
-          <Row style={{ marginHorizontal: -spacing.xs }}>
-            {[
-              { n: myHave.data?.length ?? 0, l: 'Listed', tone: colors.accent },
-              { n: myNeed.data?.length ?? 0, l: 'Wanted', tone: colors.needText },
-              { n: tradeCount, l: 'Trades done', tone: colors.matchText },
-            ].map((st) => (
-              <View
-                key={st.l}
+            </AvatarRing>
+            <View style={{ flex: 1, minWidth: 0, paddingTop: 4 }}>
+              <Text
+                numberOfLines={1}
                 style={{
-                  flex: 1,
-                  marginHorizontal: spacing.xs,
-                  paddingVertical: spacing.md,
-                  borderRadius: radii.lg,
-                  backgroundColor: colors.background,
-                  alignItems: 'center',
-                  gap: 2,
+                  fontFamily: 'InterTight_900Black',
+                  fontSize: 28,
+                  lineHeight: 32,
+                  color: M.ink,
+                  letterSpacing: -1,
                 }}
               >
-                <Text
-                  style={{
-                    fontSize: 24,
-                    lineHeight: 28,
-                    fontWeight: '800',
-                    letterSpacing: -0.6,
-                    color: st.tone,
-                  }}
-                >
-                  {st.n}
-                </Text>
-                <Text variant="caption" tone="muted">
-                  {st.l}
-                </Text>
-              </View>
-            ))}
-          </Row>
+                {profile.displayName}
+              </Text>
+              <Text
+                numberOfLines={1}
+                style={{
+                  fontFamily: 'InterTight_400Regular',
+                  fontSize: 14,
+                  color: '#666',
+                  marginTop: 1,
+                }}
+              >
+                {profile.username ? `@${profile.username}` : user?.email}
+              </Text>
+              {verified ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 }}>
+                  <Ionicons name="shield-checkmark" size={14} color={M.red} />
+                  <Text
+                    style={{ fontFamily: 'InterTight_600SemiBold', fontSize: 13, color: M.red }}
+                  >
+                    Identity Verified ✓
+                  </Text>
+                </View>
+              ) : null}
+              {location ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                  <Ionicons name="location-outline" size={13} color="#666" />
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      fontFamily: 'InterTight_400Regular',
+                      fontSize: 12.5,
+                      color: '#666',
+                      flexShrink: 1,
+                    }}
+                  >
+                    {location}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+            <OutlinedButton
+              label="Edit"
+              compact
+              onPress={() => router.push('/(app)/edit-profile')}
+            />
+          </View>
+
+          <StatTiles
+            stats={[
+              { n: myHave.data?.length ?? 0, label: 'Listed', red: true },
+              { n: myNeed.data?.length ?? 0, label: 'Wanted' },
+              { n: tradeCount, label: 'Trades done', red: true },
+            ]}
+          />
 
           {profile.bio ? (
-            <Text variant="body" tone="secondary" style={{ maxWidth: layout.proseMaxWidth }}>
+            <Text
+              style={{
+                fontFamily: 'InterTight_400Regular',
+                fontSize: 14.5,
+                lineHeight: 20,
+                color: '#444',
+              }}
+            >
               {profile.bio}
             </Text>
           ) : null}
-        </Stack>
-      </View>
+        </View>
 
-      {/* --------------------------------------------------------- body --- */}
-      <View
-        style={{
-          width: '100%',
-          maxWidth: layout.contentMaxWidth,
-          alignSelf: 'center',
-          paddingHorizontal: layout.gutter,
-          paddingTop: spacing['3xl'],
-        }}
-      >
-        <Stack gap="3xl">
+        <View style={{ marginTop: 26, gap: 26 }}>
           <MyItemsSection
             kind="listing"
             onOpen={open}
@@ -338,133 +266,73 @@ export default function ProfileScreen() {
           />
           <MyItemsSection kind="need" onOpen={open} onAdd={() => router.push('/(app)/new-need')} />
 
-          {/*
-            Two groups, not one list of nine. The first is the trading you are
-            actually doing; the second is account housekeeping. Splitting them
-            means "Sign out" is nowhere near "Messages", which is worth the
-            extra heading.
-          */}
           <View>
-            <SectionHeader title="Your trading" />
-            <Card padded={false}>
-              <ListRow
-                leading={
-                  <IconFrame tone="match">
-                    <Ionicons name="sparkles-outline" size={17} color={colors.match} />
-                  </IconFrame>
-                }
+            <SectionTitle title="Your trading" />
+            <Panel>
+              <MenuRow
+                icon="sparkles-outline"
                 title="Matches"
                 subtitle="Reciprocal barters found for you"
-                chevron={chevron}
                 onPress={() => router.push('/(app)/(tabs)/matches')}
               />
-              <Divider tone="soft" inset={spacing.lg + 38 + spacing.md} />
-              <ListRow
-                leading={
-                  <IconFrame tone="accent">
-                    <Ionicons name="paper-plane-outline" size={17} color={colors.accent} />
-                  </IconFrame>
-                }
+              <MenuRow
+                icon="paper-plane-outline"
                 title="Offers"
                 subtitle="Proposals you have sent and received"
-                chevron={chevron}
                 onPress={() => router.push('/(app)/(tabs)/matches?tab=received')}
               />
-              <Divider tone="soft" inset={spacing.lg + 38 + spacing.md} />
-              <ListRow
-                leading={
-                  <IconFrame tone="accent">
-                    <Ionicons name="chatbubbles-outline" size={17} color={colors.accent} />
-                  </IconFrame>
-                }
+              <MenuRow
+                icon="chatbubble-outline"
                 title="Messages"
                 subtitle="Chats for trades you have agreed"
-                chevron={chevron}
                 onPress={() => router.push('/(app)/messages')}
               />
-              <Divider tone="soft" inset={spacing.lg + 38 + spacing.md} />
-              <ListRow
-                leading={
-                  <IconFrame tone="accent">
-                    <Ionicons name="repeat-outline" size={17} color={colors.accent} />
-                  </IconFrame>
-                }
+              <MenuRow
+                icon="repeat-outline"
                 title="Transactions"
                 subtitle="Track and complete your trades"
-                chevron={chevron}
                 onPress={() => router.push('/(app)/transactions')}
               />
-              <Divider tone="soft" inset={spacing.lg + 38 + spacing.md} />
-              <ListRow
-                leading={
-                  <IconFrame tone={unread > 0 ? 'need' : 'neutral'}>
-                    <Ionicons
-                      name="notifications-outline"
-                      size={17}
-                      color={unread > 0 ? colors.need : colors.textSecondary}
-                    />
-                  </IconFrame>
-                }
+              <MenuRow
+                icon="notifications-outline"
+                tone="neutral"
                 title="Notifications"
                 subtitle={unread > 0 ? `${unread} unread` : 'Offers, messages and trade updates'}
-                emphasis={unread > 0}
-                trailing={unread > 0 ? <CountBadge count={unread} /> : undefined}
-                chevron={chevron}
+                badge={unread}
+                last
                 onPress={() => router.push('/(app)/notifications')}
               />
-            </Card>
+            </Panel>
           </View>
 
           <View>
-            <SectionHeader title="Account" />
-            <Card padded={false}>
-              <ListRow
-                leading={
-                  <IconFrame>
-                    <Ionicons name="person-outline" size={17} color={colors.textSecondary} />
-                  </IconFrame>
-                }
+            <SectionTitle title="Account" />
+            <Panel>
+              <MenuRow
+                icon="person-outline"
+                tone="neutral"
                 title="Edit profile"
                 subtitle="Name, username, bio, photo and city"
-                chevron={chevron}
                 onPress={() => router.push('/(app)/edit-profile')}
               />
-              <Divider tone="soft" inset={spacing.lg + 38 + spacing.md} />
-              <ListRow
-                leading={
-                  <IconFrame>
-                    <Ionicons
-                      name="shield-checkmark-outline"
-                      size={17}
-                      color={colors.textSecondary}
-                    />
-                  </IconFrame>
-                }
+              <MenuRow
+                icon="shield-checkmark-outline"
+                tone="neutral"
                 title="Security"
                 subtitle="Devices, password, delete account"
-                chevron={chevron}
                 onPress={() => router.push('/(app)/account')}
               />
-              <Divider tone="soft" inset={spacing.lg + 38 + spacing.md} />
-              <ListRow
-                leading={
-                  <IconFrame tone="danger">
-                    <Ionicons name="log-out-outline" size={17} color={colors.danger} />
-                  </IconFrame>
-                }
+              <MenuRow
+                icon="log-out-outline"
                 title={logout.isPending ? 'Signing out…' : 'Sign out'}
-                danger
-                onPress={() =>
-                  logout.mutate(undefined, { onSettled: () => router.replace('/(auth)/login') })
-                }
+                chevron={false}
+                last
+                onPress={confirmSignOut}
               />
-            </Card>
+            </Panel>
           </View>
-
-          <Row justify="center" gap="xs" style={{ paddingBottom: spacing.lg }}>
-            <Badge label="Goods for goods, no money" kind="neutral" />
-          </Row>
-        </Stack>
+        </View>
+        <EndDecor />
       </View>
     </Screen>
   );

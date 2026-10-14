@@ -14,6 +14,9 @@ export const homeImages = {
   laptop: require('../../assets/home/laptop.webp') as number,
   heroConcrete: require('../../assets/home/hero_concrete.png') as number,
   heroCurve: require('../../assets/home/hero_curve.png') as number,
+  /** Full-bleed card backgrounds for the I HAVE / I NEED tiles (generated from the two hero photos). */
+  intentHave: require('../../assets/home/intent_have.webp') as number,
+  intentNeed: require('../../assets/home/intent_need.webp') as number,
 } as const;
 
 /** Category slug → its product tile photograph. Unlisted slugs fall back to an icon. */

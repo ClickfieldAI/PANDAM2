@@ -14,7 +14,9 @@
     "lint": "eslint \"app/**/*.{ts,tsx}\" \"src/**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
     "test": "echo \"@pandam/app: no tests yet\"",
-    "clean": "rm -rf dist .expo .turbo web-build *.tsbuildinfo"
+    "clean": "rm -rf dist .expo .turbo web-build *.tsbuildinfo",
+    "dev:tunnel": "expo start --tunnel --clear",
+    "dev:client": "expo start --dev-client --clear"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",

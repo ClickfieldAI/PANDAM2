@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { Alert, View } from 'react-native';
 
 import { type BarterTransactionView } from '@pandam/types';
 import {
@@ -21,6 +21,8 @@ import {
   radii,
   spacing,
   useToast,
+  haptic,
+  Press,
 } from '@pandam/ui';
 
 import { AppHeader } from '@/components/AppHeader';
@@ -135,8 +137,10 @@ function StarPicker({ value, onChange }: { value: number; onChange: (n: number) 
       style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}
     >
       {[1, 2, 3, 4, 5].map((n) => (
-        <Pressable
+        <Press
           key={n}
+          scale="lg"
+          haptic="selection"
           onPress={() => onChange(n)}
           accessibilityRole="radio"
           accessibilityState={{ selected: n === value }}
@@ -148,7 +152,7 @@ function StarPicker({ value, onChange }: { value: number; onChange: (n: number) 
             size={28}
             color={n <= value ? colors.warning : colors.textFaint}
           />
-        </Pressable>
+        </Press>
       ))}
     </View>
   );
@@ -471,7 +475,8 @@ export default function TransactionDetailScreen() {
               label="Cancel this trade"
               variant="quiet"
               size="sm"
-              onPress={() =>
+              onPress={() => {
+                haptic.warning();
                 Alert.alert(
                   'Cancel this trade?',
                   'Both items stay off the marketplace until one of you re-publishes them. This cannot be undone.',
@@ -487,8 +492,8 @@ export default function TransactionDetailScreen() {
                         ),
                     },
                   ],
-                )
-              }
+                );
+              }}
             />
           ) : null}
         </Stack>

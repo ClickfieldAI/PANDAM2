@@ -4,28 +4,34 @@ import { boundedString, usernameSchema, z, type PatchProfileInput } from '@panda
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { ScrollView, View } from 'react-native';
-
 import {
-  Button,
-  Field,
-  Notice,
-  Screen,
-  Stack,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
   Text,
-  colors,
-  layout,
-  spacing,
-  useToast,
-} from '@pandam/ui';
+  TextInput,
+  View,
+  type TextInputProps,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppHeader } from '@/components/AppHeader';
-import { AvatarPicker } from '@/components/AvatarPicker';
-import { PandamBackground } from '@/components/brand/PandamBackground';
+import { Notice, Press, colors, useToast } from '@pandam/ui';
+
+import { AvatarPicker, choosePhoto } from '@/components/AvatarPicker';
+import { M } from '@/components/matches/MatchesUI';
+import {
+  AccentLines,
+  AvatarRing,
+  CornerDecor,
+  FieldLabel,
+  GUTTER,
+  INPUT_BORDER,
+  SectionTitle,
+} from '@/components/profile/ProfileUI';
 import { ApiError } from '@/lib/api/client';
+import { mediaSrc } from '@/lib/api/media';
 import { useSession } from '@/lib/auth/hooks';
 import { useUpdateProfile } from '@/lib/auth/profile';
-import { mediaSrc } from '@/lib/api/media';
 import { useUploadAvatar } from '@/lib/hooks/useMedia';
 
 // Blank inputs are allowed and mean "clear this field"; non-empty values are
@@ -45,27 +51,76 @@ const profileFormSchema = z.object({
 });
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
+/** The bio counter follows the reference (0/160); typing stops there. */
+const BIO_LIMIT = 160;
+
+const fieldBox = {
+  borderWidth: 1.2,
+  borderColor: INPUT_BORDER,
+  borderRadius: 10,
+  backgroundColor: '#FBFAF7',
+} as const;
+
+function Input({ error, ...props }: TextInputProps & { error?: string }) {
+  return (
+    <View>
+      <TextInput
+        placeholderTextColor="#9A9892"
+        style={[
+          fieldBox,
+          {
+            height: 46,
+            paddingHorizontal: 14,
+            fontFamily: 'InterTight_400Regular',
+            fontSize: 16,
+            color: M.ink,
+          },
+        ]}
+        {...props}
+      />
+      {error ? (
+        <Text
+          style={{
+            fontFamily: 'InterTight_600SemiBold',
+            fontSize: 12.5,
+            color: colors.danger,
+            marginTop: 4,
+          }}
+        >
+          {error}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
 export default function EditProfileScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user, profile } = useSession();
   const update = useUpdateProfile();
   const uploadAvatar = useUploadAvatar();
   const toast = useToast();
   const verified = user?.identityVerification?.status === 'verified';
 
-  const { control, handleSubmit, reset, formState } = useForm<ProfileFormValues>({
+  const { control, handleSubmit, reset, formState, watch } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: { displayName: '', username: '', bio: '', locationCity: '' },
   });
 
   useEffect(() => {
     if (profile) {
-      reset({
-        displayName: profile.displayName,
-        username: profile.username ?? '',
-        bio: profile.bio ?? '',
-        locationCity: profile.locationCity ?? '',
-      });
+      // keepDirtyValues: a background profile refresh (e.g. after a photo
+      // upload) must not wipe what the user has typed but not yet saved.
+      reset(
+        {
+          displayName: profile.displayName,
+          username: profile.username ?? '',
+          bio: profile.bio ?? '',
+          locationCity: profile.locationCity ?? '',
+        },
+        { keepDirtyValues: true },
+      );
     }
   }, [profile, reset]);
 
@@ -93,167 +148,368 @@ export default function EditProfileScreen() {
         ? 'Update failed.'
         : null;
 
-  return (
-    <Screen
-      padded={false}
-      edges={['top', 'bottom']}
-      footer={
-        <Stack gap="sm">
-          <Button
-            label={update.isPending ? 'Saving…' : 'Save changes'}
-            size="lg"
-            fullWidth
-            loading={update.isPending}
-            disabled={formState.isSubmitting}
-            onPress={onSubmit}
-          />
-          <Button label="Cancel" variant="ghost" fullWidth onPress={back} />
-        </Stack>
-      }
-    >
-      <View style={{ overflow: 'hidden' }}>
-        <PandamBackground variant="create" />
-        <View style={{ paddingHorizontal: layout.gutter, paddingTop: spacing.lg }}>
-          <AppHeader title="Edit profile" subtitle="Tell others about yourself." back />
-        </View>
-      </View>
+  const bioLength = (watch('bio') ?? '').length;
+  const onPhoto = (uri: string) =>
+    uploadAvatar.mutate(uri, {
+      onSuccess: () => toast.success('Photo updated.'),
+      onError: () => toast.error('That photo could not be uploaded. Please try again.'),
+    });
 
+  return (
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: M.bg }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <ScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingHorizontal: layout.gutter,
-          paddingBottom: spacing['3xl'],
-        }}
+        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 40 }}
       >
-        <Stack gap="lg">
-          <Stack gap="xs" style={{ alignItems: 'center', marginBottom: spacing.xs }}>
-            <AvatarPicker
-              name={profile?.displayName ?? 'You'}
-              size={96}
-              uri={mediaSrc(profile?.avatarUrl)}
-              busy={uploadAvatar.isPending}
-              onPicked={(uri) =>
-                uploadAvatar.mutate(uri, {
-                  onSuccess: () => toast.success('Photo updated.'),
-                  onError: () => toast.error('That photo could not be uploaded. Please try again.'),
-                })
-              }
-            />
-            <Text variant="label" tone="accent">
-              {uploadAvatar.isPending
-                ? 'Uploading…'
-                : profile?.avatarUrl
-                  ? 'Change photo'
-                  : 'Add a photo'}
-            </Text>
-          </Stack>
+        <View style={{ width: '100%', maxWidth: 720, alignSelf: 'center' }}>
+          <CornerDecor height={210} />
 
-          <Controller
-            control={control}
-            name="displayName"
-            render={({ field, fieldState }) => (
-              <Field
-                label="Display name"
-                autoCapitalize="words"
-                leftIcon={<Ionicons name="person-outline" size={17} color={colors.textMuted} />}
-                value={field.value ?? ''}
-                onChangeText={field.onChange}
-                onBlur={field.onBlur}
-                error={fieldState.error?.message}
-              />
-            )}
-          />
-          <Controller
-            control={control}
-            name="username"
-            render={({ field, fieldState }) => (
-              <Field
-                label="Username"
-                hint="Others can find you by this handle."
-                autoCapitalize="none"
-                leftIcon={<Ionicons name="at" size={17} color={colors.textMuted} />}
-                value={field.value ?? ''}
-                onChangeText={field.onChange}
-                onBlur={field.onBlur}
-                error={fieldState.error?.message}
-              />
-            )}
-          />
-          <Controller
-            control={control}
-            name="bio"
-            render={({ field, fieldState }) => (
-              <Field
-                label="Bio"
-                optional
-                hint="A line or two about what you make, do, or collect."
-                multiline
-                value={field.value ?? ''}
-                onChangeText={field.onChange}
-                onBlur={field.onBlur}
-                error={fieldState.error?.message}
-              />
-            )}
-          />
-          <Controller
-            control={control}
-            name="locationCity"
-            render={({ field, fieldState }) => (
-              <Field
-                label="City"
-                optional
-                hint="Used to show your items to people nearby. City only — never an address."
-                autoCapitalize="words"
-                leftIcon={<Ionicons name="location-outline" size={17} color={colors.textMuted} />}
-                value={field.value ?? ''}
-                onChangeText={field.onChange}
-                onBlur={field.onBlur}
-                error={fieldState.error?.message}
-              />
-            )}
-          />
+          <View style={{ paddingHorizontal: GUTTER }}>
+            <Press
+              haptic="light"
+              scale="lg"
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+              onPress={back}
+              hitSlop={12}
+              style={{ width: 36, height: 36, justifyContent: 'center', marginLeft: -4 }}
+            >
+              <Ionicons name="arrow-back" size={26} color={M.ink} />
+            </Press>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    fontFamily: 'InterTight_900Black',
+                    fontSize: 46,
+                    lineHeight: 50,
+                    letterSpacing: -2.4,
+                    color: M.ink,
+                  }}
+                >
+                  Edit Profile
+                </Text>
+                <Text
+                  style={{
+                    fontFamily: 'InterTight_400Regular',
+                    fontSize: 15,
+                    color: '#3A3A3A',
+                    marginTop: 2,
+                  }}
+                >
+                  Tell others about yourself.
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Save sits top-right over the decoration, as in the reference. */}
+          <Press
+            haptic="light"
+            scale="sm"
+            accessibilityRole="button"
+            accessibilityLabel="Save"
+            disabled={update.isPending || formState.isSubmitting}
+            onPress={onSubmit}
+            states={{ pressed: { backgroundColor: M.redPressed } }}
+            style={{
+              position: 'absolute',
+              top: 76,
+              right: GUTTER,
+              height: 46,
+              paddingHorizontal: 28,
+              borderRadius: 9,
+              backgroundColor: M.red,
+              borderWidth: 1.2,
+              borderColor: '#3A1410',
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: update.isPending ? 0.7 : 1,
+            }}
+          >
+            <Text style={{ fontFamily: 'InterTight_700Bold', fontSize: 17, color: '#fff' }}>
+              {update.isPending ? 'Saving…' : 'Save'}
+            </Text>
+          </Press>
+
+          {/* ------------------------------------------------------- photo -- */}
+          <View style={{ alignItems: 'center', marginTop: 14 }}>
+            <View>
+              <AvatarRing size={100}>
+                <AvatarPicker
+                  name={profile?.displayName ?? 'You'}
+                  size={100}
+                  uri={mediaSrc(profile?.avatarUrl)}
+                  busy={uploadAvatar.isPending}
+                  onPicked={onPhoto}
+                />
+              </AvatarRing>
+              <AccentLines size={44} style={{ right: -84, top: 4 }} />
+            </View>
+            <Press
+              haptic="light"
+              scale="md"
+              accessibilityRole="button"
+              accessibilityLabel="Change photo"
+              onPress={() => void choosePhoto(onPhoto, uploadAvatar.isPending)}
+              hitSlop={8}
+              style={{ marginTop: 8 }}
+            >
+              <Text style={{ fontFamily: 'InterTight_600SemiBold', fontSize: 15, color: M.ink }}>
+                {uploadAvatar.isPending
+                  ? 'Uploading…'
+                  : profile?.avatarUrl
+                    ? 'Change photo'
+                    : 'Add a photo'}
+              </Text>
+            </Press>
+          </View>
+
+          {/* ------------------------------------------------------ fields -- */}
+          <View style={{ paddingHorizontal: GUTTER, marginTop: 18, gap: 14 }}>
+            <Controller
+              control={control}
+              name="displayName"
+              render={({ field, fieldState }) => (
+                <View>
+                  <FieldLabel>Name</FieldLabel>
+                  <Input
+                    autoCapitalize="words"
+                    value={field.value ?? ''}
+                    onChangeText={field.onChange}
+                    onBlur={field.onBlur}
+                    error={fieldState.error?.message}
+                    accessibilityLabel="Name"
+                  />
+                </View>
+              )}
+            />
+            <Controller
+              control={control}
+              name="username"
+              render={({ field, fieldState }) => (
+                <View>
+                  <FieldLabel>Username</FieldLabel>
+                  <View
+                    style={[
+                      fieldBox,
+                      {
+                        height: 46,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingHorizontal: 14,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={{ fontFamily: 'InterTight_400Regular', fontSize: 16, color: M.ink }}
+                    >
+                      @
+                    </Text>
+                    <TextInput
+                      value={field.value ?? ''}
+                      onChangeText={field.onChange}
+                      onBlur={field.onBlur}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      accessibilityLabel="Username"
+                      placeholder="username"
+                      placeholderTextColor="#9A9892"
+                      style={{
+                        flex: 1,
+                        fontFamily: 'InterTight_400Regular',
+                        fontSize: 16,
+                        color: M.ink,
+                        padding: 0,
+                      }}
+                    />
+                  </View>
+                  {fieldState.error?.message ? (
+                    <Text
+                      style={{
+                        fontFamily: 'InterTight_600SemiBold',
+                        fontSize: 12.5,
+                        color: colors.danger,
+                        marginTop: 4,
+                      }}
+                    >
+                      {fieldState.error.message}
+                    </Text>
+                  ) : null}
+                </View>
+              )}
+            />
+            <Controller
+              control={control}
+              name="bio"
+              render={({ field, fieldState }) => (
+                <View>
+                  <FieldLabel>Bio</FieldLabel>
+                  <TextInput
+                    value={field.value ?? ''}
+                    onChangeText={field.onChange}
+                    onBlur={field.onBlur}
+                    multiline
+                    maxLength={BIO_LIMIT}
+                    textAlignVertical="top"
+                    accessibilityLabel="Bio"
+                    placeholder="Tell others what you like to trade..."
+                    placeholderTextColor="#9A9892"
+                    style={[
+                      fieldBox,
+                      {
+                        height: 92,
+                        paddingHorizontal: 14,
+                        paddingTop: 12,
+                        fontFamily: 'InterTight_400Regular',
+                        fontSize: 16,
+                        color: M.ink,
+                      },
+                    ]}
+                  />
+                  <Text
+                    style={{
+                      alignSelf: 'flex-end',
+                      fontFamily: 'InterTight_400Regular',
+                      fontSize: 13,
+                      color: '#777',
+                      marginTop: 4,
+                    }}
+                  >
+                    {bioLength}/{BIO_LIMIT}
+                  </Text>
+                  {fieldState.error?.message ? (
+                    <Text
+                      style={{
+                        fontFamily: 'InterTight_600SemiBold',
+                        fontSize: 12.5,
+                        color: colors.danger,
+                      }}
+                    >
+                      {fieldState.error.message}
+                    </Text>
+                  ) : null}
+                </View>
+              )}
+            />
+            <Controller
+              control={control}
+              name="locationCity"
+              render={({ field, fieldState }) => (
+                <View>
+                  <FieldLabel>City</FieldLabel>
+                  <View
+                    style={[
+                      fieldBox,
+                      {
+                        height: 46,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingHorizontal: 12,
+                        gap: 10,
+                      },
+                    ]}
+                  >
+                    <Ionicons name="location-outline" size={21} color={M.ink} />
+                    <TextInput
+                      value={field.value ?? ''}
+                      onChangeText={field.onChange}
+                      onBlur={field.onBlur}
+                      autoCapitalize="words"
+                      accessibilityLabel="City"
+                      placeholder="Select city"
+                      placeholderTextColor="#777"
+                      style={{
+                        flex: 1,
+                        fontFamily: 'InterTight_400Regular',
+                        fontSize: 16,
+                        color: M.ink,
+                        padding: 0,
+                      }}
+                    />
+                  </View>
+                  {fieldState.error?.message ? (
+                    <Text
+                      style={{
+                        fontFamily: 'InterTight_600SemiBold',
+                        fontSize: 12.5,
+                        color: colors.danger,
+                        marginTop: 4,
+                      }}
+                    >
+                      {fieldState.error.message}
+                    </Text>
+                  ) : null}
+                </View>
+              )}
+            />
+          </View>
 
           {formError ? (
-            <Notice
-              kind="danger"
-              icon={<Ionicons name="alert-circle" size={16} color={colors.danger} />}
-            >
-              {formError}
-            </Notice>
+            <View style={{ paddingHorizontal: GUTTER, marginTop: 14 }}>
+              <Notice
+                kind="danger"
+                icon={<Ionicons name="alert-circle" size={16} color={colors.danger} />}
+              >
+                {formError}
+              </Notice>
+            </View>
           ) : null}
 
-          <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
-            <Text variant="bodyStrong">Verification</Text>
-            <View
+          {/* ------------------------------------------------ verification -- */}
+          <View style={{ marginTop: 24 }}>
+            <SectionTitle title="Verification" />
+            <Press
+              haptic="light"
+              scale="sm"
+              accessibilityRole="button"
+              accessibilityLabel={verified ? 'Identity verified' : 'Verify your identity'}
+              onPress={() =>
+                router.push(verified ? '/(onboarding)/verify/complete' : '/(onboarding)/verify')
+              }
               style={{
+                marginHorizontal: GUTTER,
+                marginTop: 10,
+                borderRadius: 10,
+                backgroundColor: verified ? '#D9EEDD' : '#EDEBE6',
+                paddingHorizontal: 14,
+                paddingVertical: 14,
                 flexDirection: 'row',
                 alignItems: 'center',
-                gap: spacing.md,
-                padding: spacing.md,
-                borderRadius: 14,
-                backgroundColor: verified ? colors.matchSoft : colors.surfaceMuted,
+                gap: 14,
               }}
             >
               <Ionicons
                 name={verified ? 'shield-checkmark' : 'shield-outline'}
-                size={22}
-                color={verified ? colors.match : colors.textMuted}
+                size={28}
+                color={verified ? M.red : '#777'}
               />
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text variant="bodyStrong" tone={verified ? 'match' : 'primary'}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: 'InterTight_700Bold', fontSize: 17, color: M.ink }}>
                   {verified ? 'Identity Verified' : 'Not verified yet'}
                 </Text>
-                <Text variant="caption" tone="muted">
+                <Text
+                  style={{
+                    fontFamily: 'InterTight_400Regular',
+                    fontSize: 14,
+                    color: '#444',
+                    marginTop: 1,
+                  }}
+                >
                   {verified
                     ? 'Your identity has been verified'
                     : 'Verify your identity to build trust with other traders'}
                 </Text>
               </View>
-            </View>
+              <Ionicons name="chevron-forward" size={20} color="#444" />
+            </Press>
           </View>
-        </Stack>
+        </View>
       </ScrollView>
-    </Screen>
+    </KeyboardAvoidingView>
   );
 }

@@ -53,6 +53,16 @@ const DEV_API_PORT = 8787;
  * address. Hard-coding either one breaks the other.
  */
 function devHost(): string | null {
+  const host = rawHost();
+  if (!host) return null;
+  // Only a LAN IP or localhost can be paired with the Worker's dev port. A
+  // tunnel hostname (`*.exp.direct`, ngrok) forwards Metro only, so
+  // `host:8787` would not exist — the API must come from EXPO_PUBLIC_API_URL.
+  const isLanOrLocal = host === 'localhost' || /^\d{1,3}(\.\d{1,3}){3}$/.test(host);
+  return isLanOrLocal ? host : null;
+}
+
+function rawHost(): string | null {
   const hostUri =
     Constants.expoConfig?.hostUri ??
     (Constants.expoGoConfig as { debuggerHost?: string } | undefined)?.debuggerHost ??
@@ -65,11 +75,26 @@ function required(value: string | undefined, fallback: string): string {
   return value && value.length > 0 ? value : fallback;
 }
 
-const derivedHost = devHost() ?? 'localhost';
+const derivedHost = devHost();
+const explicitApi = process.env.EXPO_PUBLIC_API_URL;
+
+if (!explicitApi && (!__DEV__ || (rawHost() && !derivedHost))) {
+  // Release builds and tunnelled sessions have no dev machine to derive from;
+  // falling back to localhost would make every request fail on a real phone.
+  console.error(
+    '[env] EXPO_PUBLIC_API_URL is not set. This build cannot reach the API — set it to the deployed Worker URL (https://…).',
+  );
+}
+
+const apiFallback = `http://${derivedHost ?? 'localhost'}:${DEV_API_PORT}`;
+const wsFallback = `ws://${derivedHost ?? 'localhost'}:${DEV_API_PORT}`;
 
 export const clientEnv: ClientEnv = {
-  apiUrl: required(process.env.EXPO_PUBLIC_API_URL, `http://${derivedHost}:${DEV_API_PORT}`),
-  wsUrl: required(process.env.EXPO_PUBLIC_WS_URL, `ws://${derivedHost}:${DEV_API_PORT}`),
+  apiUrl: required(explicitApi, apiFallback),
+  wsUrl: required(
+    process.env.EXPO_PUBLIC_WS_URL,
+    explicitApi ? explicitApi.replace(/^http/, 'ws') : wsFallback,
+  ),
   env: (process.env.EXPO_PUBLIC_ENV as ClientEnv['env']) || 'development',
   sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN || null,
   posthogKey: process.env.EXPO_PUBLIC_POSTHOG_KEY || null,

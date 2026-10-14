@@ -168,6 +168,7 @@ export function ItemCard({
     return (
       <View>
         <Press
+          haptic="light"
           scale="sm"
           accessibilityRole="button"
           accessibilityLabel={label}
@@ -307,6 +308,7 @@ export function ItemCard({
         onLayout={(e) => setTileW(e.nativeEvent.layout.width)}
       >
         <Press
+          haptic="light"
           scale="sm"
           accessibilityRole="button"
           accessibilityLabel={label}

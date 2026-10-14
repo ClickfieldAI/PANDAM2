@@ -8,7 +8,6 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   TextInput,
   View,
@@ -16,7 +15,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Notice, Screen, Text, colors, useToast } from '@pandam/ui';
+import { Notice, Press, Screen, Text, colors, haptic, useToast } from '@pandam/ui';
 
 import { OAuthButtons, OAuthDivider } from '@/components/brand/OAuthButtons';
 import { ApiError } from '@/lib/api/client';
@@ -304,7 +303,13 @@ export default function LoginScreen() {
   });
 
   const onSubmit = handleSubmit((values) => {
-    login.mutate(values, { onSuccess: () => router.replace('/(app)/(tabs)') });
+    login.mutate(values, {
+      onSuccess: () => {
+        haptic.success();
+        router.replace('/(app)/(tabs)');
+      },
+      onError: () => haptic.error(),
+    });
   });
 
   /*
@@ -414,7 +419,9 @@ export default function LoginScreen() {
                       onBlur={field.onBlur}
                       error={fieldState.error?.message}
                       trailing={
-                        <Pressable
+                        <Press
+                          scale="lg"
+                          haptic="selection"
                           accessibilityRole="button"
                           accessibilityLabel={reveal ? 'Hide password' : 'Show password'}
                           hitSlop={10}
@@ -425,12 +432,14 @@ export default function LoginScreen() {
                             size={19}
                             color={INK}
                           />
-                        </Pressable>
+                        </Press>
                       }
                     />
                   )}
                 />
-                <Pressable
+                <Press
+                  scale="md"
+                  haptic="light"
                   accessibilityRole="link"
                   hitSlop={8}
                   style={{ alignSelf: 'flex-end', paddingTop: 16 }}
@@ -444,7 +453,7 @@ export default function LoginScreen() {
                   <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 13, color: INK }}>
                     Forgot password?
                   </Text>
-                </Pressable>
+                </Press>
               </View>
 
               {formError ? (
@@ -456,21 +465,24 @@ export default function LoginScreen() {
                 </Notice>
               ) : null}
 
-              <Pressable
+              <Press
+                scale="sm"
+                haptic="light"
                 accessibilityRole="button"
                 accessibilityLabel="Sign in"
                 disabled={login.isPending || formState.isSubmitting}
                 onPress={onSubmit}
-                style={({ pressed }) => ({
+                states={{ pressed: { backgroundColor: RED_PRESSED } }}
+                style={{
                   height: btnH,
                   borderRadius: 6,
-                  backgroundColor: pressed ? RED_PRESSED : RED,
+                  backgroundColor: RED,
                   opacity: login.isPending ? 0.7 : 1,
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'center',
                   paddingHorizontal: 20,
-                })}
+                }}
               >
                 <Text
                   style={{ ...label, flex: 1, textAlign: 'center', fontSize: 16, color: '#FFFFFF' }}
@@ -478,7 +490,7 @@ export default function LoginScreen() {
                   {login.isPending ? 'Signing in…' : 'Sign in'}
                 </Text>
                 <Ionicons name="arrow-forward" size={20} color="#fff" />
-              </Pressable>
+              </Press>
 
               <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8 }}>
                 <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 14, color: MUTED }}>

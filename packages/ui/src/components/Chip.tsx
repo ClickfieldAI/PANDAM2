@@ -109,6 +109,7 @@ export function Chip({
   return (
     <Press
       scale="sm"
+      haptic="selection"
       accessibilityRole="button"
       accessibilityState={{ selected }}
       accessibilityLabel={accessibilityLabel ?? label}

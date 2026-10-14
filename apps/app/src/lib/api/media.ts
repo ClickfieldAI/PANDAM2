@@ -7,6 +7,7 @@
  * can fetch — screens must never concatenate that themselves.
  */
 import { type ItemImage, type PublicProfile } from '@pandam/types';
+import { Platform } from 'react-native';
 
 import { clientEnv } from '@/lib/env';
 
@@ -28,12 +29,9 @@ export function primaryImage(images: ItemImage[] | undefined): string | undefine
 /**
  * Wrap a local file URI as multipart form data.
  *
- * Every platform fetches the URI into a real `Blob`/`File` rather than
- * appending the classic RN `{ uri, name, type }` object shape directly: on
- * newer Android builds that shape is sometimes rejected by `FormData` with
- * "Unsupported FormDataPart implementation" (the object isn't recognised as
- * a valid part), while `fetch(uri)` → `Blob` → `File` always is — the same
- * path web already needed for its `blob:`/`data:` URIs, now used everywhere.
+ * Web fetches the URI into a `File` (its `blob:`/`data:` URIs need it). Native
+ * hands Expo's fetch the raw bytes — see the note inside, since the usual RN
+ * `{ uri, name, type }` shape and the Blob -> File route both fail on iPhone.
  */
 async function imageForm(uri: string): Promise<FormData> {
   const form = new FormData();
@@ -41,6 +39,19 @@ async function imageForm(uri: string): Promise<FormData> {
   const extension = name.includes('.') ? name.split('.').pop()!.toLowerCase() : 'jpg';
   const type =
     extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg';
+
+  if (Platform.OS !== 'web') {
+    // Native: Expo's fetch only serialises multipart parts that are strings,
+    // Blobs, or objects exposing `bytes()` — the RN `{ uri, name, type }` shape
+    // throws "Unsupported FormDataPart implementation", and the Blob -> File
+    // round trip below failed silently on iPhone. Read the bytes once and hand
+    // them over as a part Expo understands, with an explicit content type.
+    const buffer: ArrayBuffer = await fetch(uri).then((r) => r.arrayBuffer());
+    const bytes = new Uint8Array(buffer);
+    const part = { name, type, bytes: async () => bytes };
+    form.append('file', part as unknown as Blob);
+    return form;
+  }
 
   const blob = await fetch(uri).then((r) => r.blob());
   form.append('file', new File([blob], name, { type: blob.type || type }));

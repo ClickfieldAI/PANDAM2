@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, FlatList, Platform, ScrollView, View } from 'react-native';
+import { Alert, FlatList, Platform, View } from 'react-native';
 
 import { type OfferView } from '@pandam/types';
 import {
@@ -9,35 +9,35 @@ import {
   Badge,
   Button,
   Card,
-  Chip,
   CoverTile,
-  EmptyState,
-  FloatingObject,
   GroupedList,
-  IconButton,
   ListRow,
   Notice,
   Press,
   Reveal,
   Row,
   Screen,
-  SegmentedControl,
-  shadows,
   SkeletonList,
   Stack,
   Text,
   colors,
   layout,
-  palette,
-  radii,
   spacing,
   useToast,
+  haptic,
 } from '@pandam/ui';
 
-import { AppHeader } from '@/components/AppHeader';
-import { ObjectCluster } from '@/components/brand/ObjectCluster';
-import { OrganicShape } from '@/components/brand/OrganicShape';
-import { PandamBackground } from '@/components/brand/PandamBackground';
+import {
+  EmptyShell,
+  FilterChips,
+  MatchesDecor,
+  MatchesHeader,
+  MirrorsArt,
+  PrimaryCta,
+  ReceivedArt,
+  SecondaryLink,
+  SentArt,
+} from '@/components/matches/MatchesUI';
 import { MatchCard } from '@/components/MatchCard';
 import { ErrorState } from '@/components/states';
 import { demoMatches, demoMergeList, demoOffers, demoQuery } from '@/dummy';
@@ -151,6 +151,7 @@ function ReceivedListingGroup({ group }: { group: ListingGroup }) {
       if (globalThis.confirm?.(`${dialogTitle}\n\n${body}`)) doAccept(offer);
       return;
     }
+    haptic.warning();
     Alert.alert(dialogTitle, body, [
       { text: 'Not yet', style: 'cancel' },
       { text: 'Accept', onPress: () => doAccept(offer) },
@@ -331,72 +332,32 @@ export default function MatchesScreen() {
 
   return (
     <Screen padded={false}>
-      <View style={{ overflow: 'hidden' }}>
-        <PandamBackground variant="matches" />
-        <View
-          style={{
-            paddingHorizontal: layout.gutter,
-            paddingTop: spacing.lg,
-            width: '100%',
-            maxWidth: layout.contentMaxWidth,
-            alignSelf: 'center',
-          }}
-        >
-          <AppHeader
-            eyebrow="03"
-            title="Matches"
-            subtitle="Who you mirror, and who already wants to trade."
-            right={
-              <Row gap="sm" align="center">
-                {matchCount > 0 ? (
-                  <Badge label={`${matchCount} live`} kind="match" variant="solid" dot />
-                ) : null}
-                <IconButton
-                  variant="plain"
-                  size={40}
-                  icon={<Ionicons name="settings-outline" size={19} color={colors.textPrimary} />}
-                  accessibilityLabel="Account settings"
-                  onPress={() => router.push('/(app)/account')}
-                  style={{ backgroundColor: colors.surface, ...shadows.xs }}
-                />
-              </Row>
-            }
-          />
-          <SegmentedControl
-            options={[
-              { value: 'reciprocal', label: 'Mirrors' },
-              {
-                value: 'received',
-                label: pendingIncoming > 0 ? `Received · ${pendingIncoming}` : 'Received',
-              },
-              { value: 'sent', label: 'Sent' },
-            ]}
-            value={tab}
-            onChange={(v) => {
-              setTab(v as Tab);
-              if (v !== 'received') setIncomingFilter('all');
-            }}
-          />
-        </View>
-      </View>
+      <MatchesDecor />
+      <MatchesHeader
+        tab={tab}
+        receivedLabel={pendingIncoming > 0 ? `Received · ${pendingIncoming}` : 'Received'}
+        onTab={(v) => {
+          setTab(v);
+          if (v !== 'received') setIncomingFilter('all');
+        }}
+        onSettings={() => router.push('/(app)/account')}
+        trailing={
+          matchCount > 0 ? (
+            <Badge label={`${matchCount} live`} kind="match" variant="solid" dot />
+          ) : null
+        }
+      />
 
       {tab === 'received' ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ marginTop: spacing.md }}
-          contentContainerStyle={{ paddingHorizontal: layout.gutter, gap: spacing.sm }}
-        >
-          {(['all', 'pending', 'accepted', 'rejected'] as const).map((status) => (
-            <Chip
-              key={status}
-              label={INCOMING_FILTER_LABEL[status]}
-              selected={incomingFilter === status}
-              count={incomingCount(status)}
-              onPress={() => setIncomingFilter(status)}
-            />
-          ))}
-        </ScrollView>
+        <FilterChips
+          items={(['all', 'pending', 'accepted', 'rejected'] as const).map((status) => ({
+            value: status,
+            label: INCOMING_FILTER_LABEL[status],
+            count: incomingCount(status),
+          }))}
+          value={incomingFilter}
+          onChange={setIncomingFilter}
+        />
       ) : null}
 
       {tab === 'reciprocal' ? (
@@ -430,22 +391,25 @@ export default function MatchesScreen() {
             ) : matches.isError ? (
               <ErrorState error={matches.error} onRetry={() => void matches.refetch()} />
             ) : (
-              <EmptyState
-                art={<ObjectCluster left="camera" right="laptop" icon="sparkles" />}
-                tone="match"
-                icon={
-                  <FloatingObject>
-                    <Ionicons name="sparkles" size={24} color={colors.match} />
-                  </FloatingObject>
-                }
-                title="No barter match yet"
-                body="Add what you have and what you need. When someone is the mirror of you, they appear here — no money, just a fair swap."
-                actionLabel="Explore what others have"
-                actionVariant="match"
-                onAction={() => router.push('/(app)/(tabs)/discover')}
-                secondaryLabel="Add something I have"
-                onSecondary={() => router.push('/(app)/new-listing')}
-              />
+              <EmptyShell
+                art={<MirrorsArt />}
+                large
+                title={'No barter' + String.fromCharCode(10) + 'match yet'}
+                body={[
+                  'Add what you have and what you need.',
+                  'When someone is the mirror of you, they',
+                  'appear here — no money, just a fair swap.',
+                ]}
+              >
+                <PrimaryCta
+                  label="Explore what others have"
+                  onPress={() => router.push('/(app)/(tabs)/discover')}
+                />
+                <SecondaryLink
+                  label="Add something I have"
+                  onPress={() => router.push('/(app)/new-listing')}
+                />
+              </EmptyShell>
             )
           }
           ListFooterComponent={
@@ -495,44 +459,10 @@ export default function MatchesScreen() {
             ) : incoming.isError ? (
               <ErrorState error={incoming.error} onRetry={() => void incoming.refetch()} />
             ) : (
-              <EmptyState
-                art={
-                  <View style={{ width: 200, height: 140, alignItems: 'center' }}>
-                    <OrganicShape
-                      size={170}
-                      color={palette.orange50}
-                      rotate={-6}
-                      style={{ top: 0 }}
-                    />
-                    <FloatingObject
-                      amplitude={6}
-                      rotate={3}
-                      style={{ position: 'absolute', top: 24 }}
-                    >
-                      <View
-                        style={{
-                          width: 76,
-                          height: 76,
-                          borderRadius: radii.lg,
-                          backgroundColor: colors.surface,
-                          borderWidth: 1.5,
-                          borderColor: colors.textPrimary,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          transform: [{ rotate: '-6deg' }],
-                          ...shadows.md,
-                        }}
-                      >
-                        <Ionicons name="send" size={28} color={colors.textPrimary} />
-                      </View>
-                    </FloatingObject>
-                  </View>
-                }
-                icon={
-                  <Ionicons name="paper-plane-outline" size={22} color={colors.textSecondary} />
-                }
+              <EmptyShell
+                art={<ReceivedArt />}
                 title="No interest yet"
-                body="When someone wants to trade for something you have, it arrives here."
+                body={['When someone wants to trade for something', 'you have, it arrives here.']}
               />
             )
           }
@@ -578,16 +508,16 @@ export default function MatchesScreen() {
             ) : offersTab.isError ? (
               <ErrorState error={offersTab.error} onRetry={() => void offersTab.refetch()} />
             ) : (
-              <EmptyState
-                art={<ObjectCluster left="laptop" right="headphones" icon="send" />}
-                icon={
-                  <Ionicons name="paper-plane-outline" size={22} color={colors.textSecondary} />
-                }
+              <EmptyShell
+                art={<SentArt />}
                 title="No offers sent"
-                body="Open any listing you like and offer one of your own items against it."
-                actionLabel="Browse listings"
-                onAction={() => router.push('/(app)/(tabs)/discover')}
-              />
+                body={['Open any listing you like and offer one of', 'your own items against it.']}
+              >
+                <PrimaryCta
+                  label="Browse listings"
+                  onPress={() => router.push('/(app)/(tabs)/discover')}
+                />
+              </EmptyShell>
             )
           }
         />

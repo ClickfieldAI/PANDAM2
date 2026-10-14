@@ -3,7 +3,15 @@ import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Image, KeyboardAvoidingView, Platform, View } from 'react-native';
+import {
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Text as RNText,
+  TextInput,
+  View,
+} from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -15,8 +23,6 @@ import { type MessageView } from '@pandam/types';
 import {
   Avatar,
   EmptyState,
-  IconButton,
-  Input,
   Press,
   Reveal,
   Row,
@@ -30,6 +36,8 @@ import {
   useMotionOK,
 } from '@pandam/ui';
 
+import { M } from '@/components/matches/MatchesUI';
+import { CornerDecor } from '@/components/profile/ProfileUI';
 import { IS_DEMO_DATA, demoConversations, demoMessages, demoQuery } from '@/dummy';
 import { ErrorState } from '@/components/states';
 import { TradeContextCard, tradeSubtitle } from '@/components/TradeContextCard';
@@ -103,20 +111,21 @@ function Bubble({ item }: { item: Rendered }) {
   const mine = message.isMine;
 
   return (
-    <Reveal offset={8} style={{ alignSelf: mine ? 'flex-end' : 'flex-start' }}>
+    <Reveal offset={8} style={{ alignSelf: 'stretch' }}>
       <View
         style={{
           maxWidth: '82%',
+          alignSelf: mine ? 'flex-end' : 'flex-start',
           alignItems: mine ? 'flex-end' : 'flex-start',
           marginTop: startsRun ? spacing.md : 2,
         }}
       >
         <View
           style={{
-            backgroundColor: mine ? colors.accent : colors.surface,
-            borderWidth: mine ? 0 : layout.hairline,
-            borderColor: colors.border,
-            borderRadius: radii.lg,
+            backgroundColor: mine ? M.red : '#FBFAF7',
+            borderWidth: mine ? 0 : 1.2,
+            borderColor: '#C9C7C2',
+            borderRadius: 14,
             // The corner facing this speaker's side squares off mid-run, so a
             // run reads as one block of speech rather than three separate ones.
             borderTopRightRadius: mine && !startsRun ? radii.xs : radii.lg,
@@ -124,8 +133,8 @@ function Bubble({ item }: { item: Rendered }) {
             borderTopLeftRadius: !mine && !startsRun ? radii.xs : radii.lg,
             borderBottomLeftRadius: !mine && !endsRun ? radii.xs : radii.lg,
             padding: message.imageUrl ? spacing.xs : undefined,
-            paddingHorizontal: message.imageUrl ? undefined : spacing.md,
-            paddingVertical: message.imageUrl ? undefined : spacing.sm,
+            paddingHorizontal: message.imageUrl ? undefined : 16,
+            paddingVertical: message.imageUrl ? undefined : 11,
           }}
         >
           {message.imageUrl ? (
@@ -142,9 +151,9 @@ function Bubble({ item }: { item: Rendered }) {
           ) : null}
           {message.body ? (
             <Text
-              variant="bodySm"
+              variant="body"
               style={{
-                lineHeight: 20,
+                lineHeight: 22,
                 marginHorizontal: message.imageUrl ? spacing.xs : 0,
                 marginBottom: message.imageUrl ? spacing.xxs : 0,
                 color: mine ? colors.textInverse : colors.textPrimary,
@@ -174,7 +183,7 @@ function DaySeparator({ label }: { label: string }) {
   return (
     <Row gap="md" align="center" style={{ marginTop: spacing.xl, marginBottom: spacing.xs }}>
       <View style={{ flex: 1, height: layout.hairline, backgroundColor: colors.borderSoft }} />
-      <Text variant="caption" tone="faint" caps style={{ letterSpacing: 1 }}>
+      <Text variant="caption" tone="muted" caps style={{ letterSpacing: 1.2, fontWeight: '600' }}>
         {label}
       </Text>
       <View style={{ flex: 1, height: layout.hairline, backgroundColor: colors.borderSoft }} />
@@ -226,23 +235,18 @@ function SendButton({
       <Animated.View
         style={[
           {
-            width: 40,
-            height: 40,
+            width: 46,
+            height: 46,
             borderRadius: radii.pill,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: active ? colors.accent : colors.surfaceMuted,
-            borderWidth: active ? layout.hairline : 0,
-            borderColor: colors.border,
+            backgroundColor: active ? M.red : '#E4E2DD',
+            borderWidth: 0,
           },
           style,
         ]}
       >
-        <Ionicons
-          name="arrow-up"
-          size={18}
-          color={active ? colors.textInverse : colors.textFaint}
-        />
+        <Ionicons name="arrow-up" size={22} color={active ? colors.textInverse : '#9A9892'} />
       </Animated.View>
     </Press>
   );
@@ -305,7 +309,8 @@ export default function ChatScreen() {
       setUploadingImage(true);
       try {
         imageKey = (await uploadMessageImage(conversationId!, localImage)).imageKey;
-      } catch {
+      } catch (err) {
+        console.warn('[chat] photo upload failed:', err);
         setUploadingImage(false);
         setDraft(body);
         setPendingImage(localImage);
@@ -332,69 +337,85 @@ export default function ChatScreen() {
   };
 
   return (
-    <Screen padded={false} edges={['top', 'bottom']}>
-      {/*
-        A chat header is a navigation bar, not a page title: it stays compact,
-        names the person, and gets out of the way. Tapping it opens their
-        profile the way every messaging app people already use does.
-      */}
-      <Row
-        gap="sm"
-        style={{
-          paddingHorizontal: spacing.sm,
-          paddingRight: spacing.sm,
-          paddingVertical: spacing.sm,
-          borderBottomWidth: layout.hairline,
-          borderBottomColor: colors.border,
-          backgroundColor: colors.surface,
-        }}
-      >
-        <IconButton
-          variant="plain"
-          size={40}
-          icon={<Ionicons name="chevron-back" size={22} color={colors.textPrimary} />}
-          accessibilityLabel="Back to messages"
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(app)/messages'))}
-        />
+    <Screen padded={false} edges={['top', 'bottom']} background={M.bg}>
+      <View style={{ zIndex: 0 }}>
+        <CornerDecor height={230} />
+        <View style={{ paddingHorizontal: layout.gutter, paddingTop: 4 }}>
+          <Press
+            scale="lg"
+            dim={false}
+            accessibilityRole="button"
+            accessibilityLabel="Back to messages"
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/(app)/messages'))}
+            hitSlop={12}
+            style={{ width: 36, height: 36, justifyContent: 'center', marginLeft: -4 }}
+          >
+            <Ionicons name="chevron-back" size={26} color={M.ink} />
+          </Press>
 
-        <Press
-          scale="none"
-          dim={false}
-          accessibilityRole="button"
-          accessibilityLabel={`${name}, open their listings`}
-          onPress={() =>
-            person ? router.push(`/(app)/(tabs)/discover?owner=${person.id}`) : undefined
-          }
-          style={{ flex: 1, minWidth: 0, borderRadius: radii.sm }}
-        >
-          <Row gap="sm" style={{ paddingVertical: 2 }}>
-            <Avatar name={name} size={36} uri={mediaSrc(person?.avatarUrl)} />
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text variant="h3" numberOfLines={1}>
-                {name}
-              </Text>
-              <Text variant="caption" tone="muted" numberOfLines={1}>
-                {tradeSubtitle(offer.data)}
-              </Text>
-            </View>
-          </Row>
-        </Press>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10 }}>
+            <Press
+              scale="none"
+              dim={false}
+              accessibilityRole="button"
+              accessibilityLabel={`${name}, open their listings`}
+              onPress={() =>
+                person ? router.push(`/(app)/(tabs)/discover?owner=${person.id}`) : undefined
+              }
+              style={{ flex: 1, minWidth: 0 }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                <Avatar name={name} size={64} uri={mediaSrc(person?.avatarUrl)} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <RNText
+                    numberOfLines={1}
+                    style={{ fontFamily: 'InterTight_700Bold', fontSize: 24, color: M.ink }}
+                  >
+                    {name}
+                  </RNText>
+                  <RNText
+                    numberOfLines={2}
+                    style={{
+                      fontFamily: 'InterTight_400Regular',
+                      fontSize: 15,
+                      lineHeight: 20,
+                      color: '#555',
+                    }}
+                  >
+                    {tradeSubtitle(offer.data)}
+                  </RNText>
+                </View>
+              </View>
+            </Press>
 
-        <IconButton
-          variant="surface"
-          size={40}
-          style={{ borderRadius: radii.md }}
-          icon={<Ionicons name="ellipsis-horizontal" size={20} color={colors.textPrimary} />}
-          accessibilityLabel={`More options for ${name}`}
-          onPress={() =>
-            person
-              ? router.push(
-                  `/(app)/report?subjectType=user&subjectId=${person.id}&label=${encodeURIComponent(name)}`,
-                )
-              : undefined
-          }
-        />
-      </Row>
+            <Press
+              scale="lg"
+              dim={false}
+              accessibilityRole="button"
+              accessibilityLabel={`More options for ${name}`}
+              onPress={() =>
+                person
+                  ? router.push(
+                      `/(app)/report?subjectType=user&subjectId=${person.id}&label=${encodeURIComponent(name)}`,
+                    )
+                  : undefined
+              }
+              style={{
+                width: 50,
+                height: 50,
+                borderRadius: 10,
+                backgroundColor: M.surface,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 1,
+                borderColor: '#D9D9D9',
+              }}
+            >
+              <Ionicons name="ellipsis-horizontal" size={22} color={M.ink} />
+            </Press>
+          </View>
+        </View>
+      </View>
 
       {offer.data ? (
         <View
@@ -403,7 +424,7 @@ export default function ChatScreen() {
             maxWidth: layout.contentMaxWidth,
             alignSelf: 'center',
             paddingHorizontal: layout.gutter,
-            paddingTop: spacing.md,
+            paddingTop: spacing.lg,
           }}
         >
           <TradeContextCard
@@ -465,9 +486,9 @@ export default function ChatScreen() {
 
         <View
           style={{
-            borderTopWidth: layout.hairline,
-            borderTopColor: colors.border,
-            backgroundColor: colors.surface,
+            borderTopWidth: 1,
+            borderTopColor: '#D9D9D9',
+            backgroundColor: '#FBFAF7',
           }}
         >
           {pendingImage ? (
@@ -531,26 +552,43 @@ export default function ChatScreen() {
             align="flex-end"
             style={{ paddingHorizontal: layout.gutter, paddingVertical: spacing.md }}
           >
-            <IconButton
-              variant="plain"
-              size={40}
-              icon={<Ionicons name="attach" size={20} color={colors.textSecondary} />}
+            <Press
+              scale="lg"
+              dim={false}
+              accessibilityRole="button"
               accessibilityLabel="Attach a photo"
               disabled={uploadingImage}
               onPress={() => void pickImage()}
-            />
+              hitSlop={6}
+              style={{ width: 40, height: 46, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Ionicons name="attach" size={26} color={M.ink} />
+            </Press>
             <View style={{ flex: 1 }}>
-              <Input
-                placeholder="Message…"
+              <TextInput
+                placeholder="Message..."
+                placeholderTextColor="#9A9892"
                 value={draft}
                 onChangeText={handleDraftChange}
                 onSubmitEditing={handleSend}
                 returnKeyType="send"
                 multiline
-                // The default multiline field is a 104pt box, which is right for
-                // a description and far too tall for a composer. It grows from
-                // one line instead.
-                style={{ minHeight: 0, maxHeight: 120, paddingVertical: spacing.sm }}
+                accessibilityLabel="Message"
+                // Grows from one line; a fixed 104pt multiline box is far too tall here.
+                style={{
+                  minHeight: 46,
+                  maxHeight: 120,
+                  paddingHorizontal: 16,
+                  paddingTop: 12,
+                  paddingBottom: 12,
+                  borderRadius: 10,
+                  borderWidth: 1.2,
+                  borderColor: '#C9C7C2',
+                  backgroundColor: '#F1EFE9',
+                  fontFamily: 'InterTight_400Regular',
+                  fontSize: 16,
+                  color: M.ink,
+                }}
               />
             </View>
             <SendButton active={canSend} disabled={!canSend} onPress={() => void handleSend()} />

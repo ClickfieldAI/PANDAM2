@@ -52,6 +52,11 @@ const COPY: Record<
   transaction_updated: { icon: 'repeat-outline', label: 'Trade updated', tone: 'need' },
   review_reminder: { icon: 'star-outline', label: 'Leave a review', tone: 'need' },
   review_received: { icon: 'star-outline', label: 'New review', tone: 'match' },
+  need_match: {
+    icon: 'search-outline',
+    label: 'Someone needs something you have',
+    tone: 'need',
+  },
 };
 
 /** Where a notification takes you, or null when it has no specific target. */
@@ -60,6 +65,7 @@ function target(n: NotificationView): string | null {
   if (n.data.offerId) return `/(app)/offer/${n.data.offerId}`;
   if (n.data.transactionId) return `/(app)/transaction/${n.data.transactionId}`;
   if (n.data.paymentId) return `/(app)/payment/${n.data.paymentId}`;
+  if (n.data.needId) return `/(app)/need/${n.data.needId}`;
   return null;
 }
 

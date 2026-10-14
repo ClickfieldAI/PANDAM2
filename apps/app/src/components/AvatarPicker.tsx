@@ -30,6 +30,27 @@ async function fromCamera(): Promise<string | null> {
   return res.canceled ? null : (res.assets[0]?.uri ?? null);
 }
 
+/** The shared "take / choose a photo" flow, usable from any trigger (e.g. a text link). */
+export async function choosePhoto(onPicked: (uri: string) => void, busy = false) {
+  if (busy) return;
+  if (Platform.OS === 'web') {
+    const picked = await fromLibrary();
+    if (picked) onPicked(picked);
+    return;
+  }
+  Alert.alert('Profile photo', undefined, [
+    {
+      text: 'Take photo',
+      onPress: () => void fromCamera().then((u) => u && onPicked(u)),
+    },
+    {
+      text: 'Choose from library',
+      onPress: () => void fromLibrary().then((u) => u && onPicked(u)),
+    },
+    { text: 'Cancel', style: 'cancel' },
+  ]);
+}
+
 /**
  * Tap-to-change profile photo. On a phone it offers Take photo / Choose from
  * library; on web it opens the file picker. Returns the local image URI via
@@ -53,25 +74,7 @@ export function AvatarPicker({
   variant?: 'avatar' | 'add';
   onPicked: (uri: string) => void;
 }) {
-  const choose = async () => {
-    if (busy) return;
-    if (Platform.OS === 'web') {
-      const picked = await fromLibrary();
-      if (picked) onPicked(picked);
-      return;
-    }
-    Alert.alert('Profile photo', undefined, [
-      {
-        text: 'Take photo',
-        onPress: () => void fromCamera().then((u) => u && onPicked(u)),
-      },
-      {
-        text: 'Choose from library',
-        onPress: () => void fromLibrary().then((u) => u && onPicked(u)),
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
+  const choose = () => choosePhoto(onPicked, busy);
 
   if (variant === 'add') {
     return (

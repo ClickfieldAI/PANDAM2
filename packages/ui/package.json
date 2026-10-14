@@ -20,6 +20,7 @@
     "@pandam/utils": "workspace:*"
   },
   "peerDependencies": {
+    "expo-haptics": ">=57",
     "expo-linear-gradient": ">=57",
     "nativewind": ">=4.2",
     "react": ">=19",

@@ -24,14 +24,20 @@ const MEMBER_SORT = 500;
  */
 export function useBrowseCategories() {
   const live = useCategories();
-  if (!IS_DEMO_DATA) return live;
+  // The catch-all "Other" is hidden from browsing (Discover chips, Home grid):
+  // members use "Add" for anything that doesn't fit. It stays selectable in the
+  // post form, so existing items in it keep a valid category.
+  const browsable = (list: Category[]) => list.filter((c) => c.slug !== 'other');
+  if (!IS_DEMO_DATA) {
+    return { ...live, data: live.data ? browsable(live.data) : live.data } as typeof live;
+  }
   const demoSlugs = new Set(demoCategoryList.map((c) => c.slug));
   const added = (live.data ?? []).filter(
     (c) => c.sortOrder === MEMBER_SORT && !demoSlugs.has(c.slug),
   );
   return {
     ...live,
-    data: [...(demoCategoryList as unknown as Category[]), ...added],
+    data: browsable([...(demoCategoryList as unknown as Category[]), ...added]),
     isPending: false,
     isError: false,
   } as typeof live;

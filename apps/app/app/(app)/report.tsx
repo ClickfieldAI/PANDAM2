@@ -26,6 +26,7 @@ import {
   layout,
   radii,
   spacing,
+  haptic,
 } from '@pandam/ui';
 
 import { AppHeader } from '@/components/AppHeader';
@@ -107,6 +108,7 @@ export default function ReportScreen() {
       },
       {
         onSuccess: () => {
+          haptic.success();
           Alert.alert(
             'Report sent',
             'Thank you. A person will review this. Nothing is hidden automatically, so you may still see it in the meantime.',

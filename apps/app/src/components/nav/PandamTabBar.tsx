@@ -23,12 +23,12 @@ type TabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>
 type IconName = keyof typeof Ionicons.glyphMap;
 
 /** Content height of the panel, before the safe-area inset is added below it. */
-export const TAB_BAR_HEIGHT = 78;
+export const TAB_BAR_HEIGHT = 66;
 const CREATE = 'create';
 /** How far the centre square rises above the panel's top edge. */
-const CREATE_LIFT = 30;
+const CREATE_LIFT = 20;
 /** The centre square's own size. */
-const CREATE_SIZE = 62;
+const CREATE_SIZE = 54;
 
 const ICONS: Record<string, IconName> = {
   index: 'home-outline',
@@ -36,11 +36,18 @@ const ICONS: Record<string, IconName> = {
   matches: 'sparkles-outline',
   profile: 'person-outline',
 };
+/** The filled icon shown while a tab is active (outline otherwise). */
+const ICONS_ACTIVE: Record<string, IconName> = {
+  index: 'home',
+  discover: 'compass',
+  matches: 'sparkles',
+  profile: 'person',
+};
 const LABEL: Record<string, string> = {
-  index: 'HOME',
-  discover: 'DISCOVER',
-  matches: 'MATCHES',
-  profile: 'PROFILE',
+  index: '01 HOME',
+  discover: '02 DISCOVER',
+  matches: '03 MATCHES',
+  profile: '04 PROFILE',
 };
 
 /**
@@ -54,7 +61,6 @@ const ICON_ROTATE: Record<string, number> = { index: 0, discover: 5, matches: -6
 const ICON_LIFT: Record<string, number> = { index: -2, discover: 0, matches: 0, profile: 0 };
 
 const EASE_OUT = Easing.out(Easing.cubic);
-const AnimatedIonicons = Animated.createAnimatedComponent(Ionicons);
 const AnimatedText = Animated.createAnimatedComponent(Text);
 
 function tap() {
@@ -107,9 +113,10 @@ function TabItem({
     const lift = interpolate(pulse.value, [0, 0.5, 1], [0, ICON_LIFT[name] ?? 0, 0]);
     return {
       transform: [{ scale: bump * press.value }, { rotate: `${rotate}deg` }, { translateY: lift }],
-      color: interpolateColor(on.value, [0, 1], [colors.textPrimary, colors.accent]),
     };
   });
+  const offIconStyle = useAnimatedStyle(() => ({ opacity: 1 - on.value }));
+  const onIconStyle = useAnimatedStyle(() => ({ opacity: on.value }));
 
   const labelStyle = useAnimatedStyle(() => ({
     opacity: interpolate(on.value, [0, 1], [0.6, 1]),
@@ -145,11 +152,20 @@ function TabItem({
         alignItems: 'center',
         justifyContent: 'center',
         height: TAB_BAR_HEIGHT,
-        gap: 5,
+        gap: 4,
       }}
     >
       <View>
-        <AnimatedIonicons name={ICONS[name]!} size={22} style={iconStyle} />
+        {/* Two stacked icons cross-fade (outline -> filled, ink -> accent); plain
+            Ionicons inside Animated.Views, so nothing animates the icon's own props. */}
+        <Animated.View style={iconStyle}>
+          <Animated.View style={offIconStyle}>
+            <Ionicons name={ICONS[name]!} size={22} color={colors.textPrimary} />
+          </Animated.View>
+          <Animated.View style={[{ position: 'absolute', left: 0, top: 0 }, onIconStyle]}>
+            <Ionicons name={ICONS_ACTIVE[name]!} size={22} color={colors.accent} />
+          </Animated.View>
+        </Animated.View>
         {badge ? (
           <CountBadge
             value={badge}
@@ -162,9 +178,9 @@ function TabItem({
       <AnimatedText
         style={[
           {
-            fontSize: 10.5,
-            fontFamily: 'InterTight_700Bold',
-            letterSpacing: 0.3,
+            fontSize: 10,
+            fontFamily: 'InterTight_600SemiBold',
+            letterSpacing: 0.4,
           },
           labelStyle,
         ]}
@@ -172,6 +188,16 @@ function TabItem({
         {LABEL[name]}
       </AnimatedText>
     </Pressable>
+  );
+}
+
+/** A hairline between neighbouring tabs, shorter than the bar like the reference. */
+function TabDivider() {
+  return (
+    <View
+      pointerEvents="none"
+      style={{ width: 1, height: 38, alignSelf: 'center', backgroundColor: '#E4E2DC' }}
+    />
   );
 }
 
@@ -232,22 +258,20 @@ function CreateButton({ onPress }: { onPress: () => void }) {
             {
               width: CREATE_SIZE,
               height: CREATE_SIZE,
-              borderRadius: 18,
+              borderRadius: 15,
               backgroundColor: colors.accent,
-              borderWidth: 2,
-              borderColor: colors.border,
               alignItems: 'center',
               justifyContent: 'center',
-              shadowColor: colors.border,
-              shadowOpacity: 0.22,
-              shadowRadius: 10,
-              shadowOffset: { width: 0, height: 6 },
+              shadowColor: colors.accent,
+              shadowOpacity: 0.38,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 7 },
               elevation: 10,
             },
             square,
           ]}
         >
-          <Ionicons name="add" size={30} color={palette.white} />
+          <Ionicons name="add" size={32} color={palette.white} />
         </Animated.View>
       </Pressable>
     </View>
@@ -298,8 +322,8 @@ export function PandamTabBar({ state, navigation }: TabBarProps) {
           // bottom sheet attached to the device edge.
           paddingBottom: insets.bottom,
           backgroundColor: colors.background,
-          borderTopLeftRadius: 28,
-          borderTopRightRadius: 28,
+          borderTopLeftRadius: 34,
+          borderTopRightRadius: 34,
           borderTopWidth: 1,
           borderLeftWidth: 1,
           borderRightWidth: 1,
@@ -313,18 +337,20 @@ export function PandamTabBar({ state, navigation }: TabBarProps) {
         }}
       >
         <View style={{ height: TAB_BAR_HEIGHT, flexDirection: 'row' }}>
-          {left.map((route) => {
+          {left.map((route, i) => {
             const focused = route.name === focusedName;
             if (!ICONS[route.name]) return null;
             return (
-              <TabItem
-                key={route.key}
-                name={route.name}
-                focused={focused}
-                badge={route.name === 'matches' ? matchCount : undefined}
-                onPress={() => go(route.name, route.key, focused)}
-                onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
-              />
+              <View key={route.key} style={{ flex: 1, flexDirection: 'row' }}>
+                {i > 0 ? <TabDivider /> : null}
+                <TabItem
+                  name={route.name}
+                  focused={focused}
+                  badge={route.name === 'matches' ? matchCount : undefined}
+                  onPress={() => go(route.name, route.key, focused)}
+                  onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
+                />
+              </View>
             );
           })}
 
@@ -337,14 +363,16 @@ export function PandamTabBar({ state, navigation }: TabBarProps) {
             const focused = route.name === focusedName;
             if (!ICONS[route.name]) return null;
             return (
-              <TabItem
-                key={route.key}
-                name={route.name}
-                focused={focused}
-                badge={route.name === 'matches' ? matchCount : undefined}
-                onPress={() => go(route.name, route.key, focused)}
-                onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
-              />
+              <View key={route.key} style={{ flex: 1, flexDirection: 'row' }}>
+                <TabDivider />
+                <TabItem
+                  name={route.name}
+                  focused={focused}
+                  badge={route.name === 'matches' ? matchCount : undefined}
+                  onPress={() => go(route.name, route.key, focused)}
+                  onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
+                />
+              </View>
             );
           })}
         </View>

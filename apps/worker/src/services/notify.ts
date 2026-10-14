@@ -49,6 +49,10 @@ const COPY: Record<NotificationType, { title: string; body: string }> = {
   transaction_updated: { title: 'Trade updated', body: 'One of your trades changed status.' },
   review_received: { title: 'New review', body: 'Someone left you a review.' },
   review_reminder: { title: 'Leave a review', body: 'How did your last trade go?' },
+  need_match: {
+    title: 'Someone needs something you have',
+    body: 'A new request matches an item you listed.',
+  },
 };
 
 /**

@@ -47,11 +47,13 @@ function routeFor(data: PushData): string {
   const transactionId = str('transactionId');
   const conversationId = str('conversationId');
   const paymentId = str('paymentId');
+  const needId = str('needId');
 
   if (conversationId) return `/(app)/chat/${conversationId}`;
   if (offerId) return `/(app)/offer/${offerId}`;
   if (transactionId) return `/(app)/transaction/${transactionId}`;
   if (paymentId) return `/(app)/payment/${paymentId}`;
+  if (needId) return `/(app)/need/${needId}`;
   return '/(app)/notifications';
 }
 

@@ -1,13 +1,16 @@
 import { useEffect } from 'react';
-import { View } from 'react-native';
+import { Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
-import { Text, colors, radii, spacing, useMotionOK } from '@pandam/ui';
+import { useMotionOK } from '@pandam/ui';
+
+import { M } from '@/components/matches/MatchesUI';
 
 /**
- * The guided path above the create form. Purely a progress picture: the
- * terracotta fill springs forward as sections are completed, and each reached
- * stop fills in. It reads the form's state; it never drives it.
+ * The guided path above the create form: an outlined container with a numbered
+ * stop per step. Purely a progress picture — the red fill springs forward as
+ * sections are completed and the CURRENT stop is a filled red disc; it reads
+ * the form's state and never drives it.
  */
 export function GuideRail({ steps, done }: { steps: string[]; done: number }) {
   const motionOK = useMotionOK();
@@ -21,64 +24,62 @@ export function GuideRail({ steps, done }: { steps: string[]; done: number }) {
   return (
     <View
       style={{
-        backgroundColor: colors.surface,
-        borderRadius: radii.xl,
-        borderWidth: 1,
-        borderColor: colors.border,
-        paddingHorizontal: spacing.lg,
-        paddingTop: spacing.lg,
-        paddingBottom: spacing.md,
+        borderRadius: 6,
+        borderWidth: 1.4,
+        borderColor: M.ink,
+        backgroundColor: M.bg,
+        paddingHorizontal: 18,
+        paddingTop: 22,
+        paddingBottom: 14,
       }}
     >
-      <View style={{ height: 22, justifyContent: 'center', marginHorizontal: 8 }}>
-        <View style={{ height: 4, borderRadius: 2, backgroundColor: colors.backgroundSecondary }} />
+      <View style={{ height: 24, justifyContent: 'center', marginHorizontal: 11 }}>
+        <View style={{ height: 3, borderRadius: 2, backgroundColor: '#D9D7D1' }} />
         <Animated.View
           style={[
-            { position: 'absolute', height: 4, borderRadius: 2, backgroundColor: colors.accent },
+            { position: 'absolute', height: 3, borderRadius: 2, backgroundColor: M.red },
             fill,
           ]}
         />
         <View
           style={{
             position: 'absolute',
-            left: -8,
-            right: -8,
+            left: -11,
+            right: -11,
             flexDirection: 'row',
             justifyContent: 'space-between',
           }}
         >
           {steps.map((s, i) => {
-            const reached = i <= done;
+            const current = i === done;
+            const reached = i < done;
             return (
               <View
                 key={s}
                 style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: 9,
-                  backgroundColor: reached ? colors.accent : colors.surface,
-                  borderWidth: 2,
-                  borderColor: reached ? colors.accent : colors.borderStrong,
+                  width: 24,
+                  height: 24,
+                  borderRadius: 12,
+                  backgroundColor: current || reached ? M.red : M.bg,
+                  borderWidth: current || reached ? 0 : 1.8,
+                  borderColor: M.ink,
                 }}
               />
             );
           })}
         </View>
       </View>
-      <View
-        style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm }}
-      >
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
         {steps.map((s, i) => (
           <Text
             key={s}
-            variant="caption"
-            numberOfLines={2}
+            numberOfLines={1}
             style={{
               width: `${100 / steps.length}%`,
               textAlign: i === 0 ? 'left' : i === steps.length - 1 ? 'right' : 'center',
-              fontWeight: i <= done ? '700' : '400',
-              color: i <= done ? colors.accentText : colors.textMuted,
-              fontSize: 11,
+              fontFamily: i === done ? 'InterTight_700Bold' : 'InterTight_400Regular',
+              fontSize: 13.5,
+              color: i <= done ? M.red : '#555',
             }}
           >
             {s}

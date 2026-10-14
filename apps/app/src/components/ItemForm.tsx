@@ -10,35 +10,47 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { ScrollView, Switch, View } from 'react-native';
+import { Alert, Platform, ScrollView, Switch, Text as RNText, View } from 'react-native';
 
 import { type MarketItem } from '@pandam/types';
 import {
   Button,
   Card,
-  Chip,
   Field,
   Notice,
+  Press,
   Row,
   Stack,
   Text,
   colors,
   layout,
-  radii,
   spacing,
+  haptic,
 } from '@pandam/ui';
 import { boundedString, itemTypeSchema, z } from '@pandam/validation';
 
 import { AddCategorySheet } from '@/components/AddCategorySheet';
 import { GuideRail } from '@/components/brand/GuideRail';
+import { M } from '@/components/matches/MatchesUI';
 import { PhotoPicker } from '@/components/PhotoPicker';
 import { ApiError } from '@/lib/api/client';
+import {
+  allowSaving,
+  clearDraft,
+  isEmptyDraft,
+  loadDraft,
+  saveDraft,
+  validPhotos,
+  type DraftValues,
+} from '@/lib/drafts';
 import { TYPE_LABEL } from '@/lib/format';
 import { useCategories } from '@/lib/hooks/useCategories';
 import { categoryIcon, typeIcon } from '@/lib/icons';
 
+/** Same cap as `priceAmountSchema` in @pandam/validation (paise). */
+const MAX_PRICE_PAISE = 100_000_000;
 const TRANSACTION_TYPES = ['barter', 'sale', 'both'] as const;
 type TransactionTypeOption = (typeof TRANSACTION_TYPES)[number];
 
@@ -58,6 +70,14 @@ const formSchema = z
     const n = Number(v.priceRupees);
     if (!v.priceRupees.trim() || !Number.isFinite(n) || n <= 0) {
       ctx.addIssue({ code: 'custom', path: ['priceRupees'], message: 'Enter a price above ₹0' });
+    } else if (Math.round(n * 100) > MAX_PRICE_PAISE) {
+      // Mirrors the server's priceAmountSchema cap, so this fails here with a
+      // readable message instead of as a generic "validation" error on submit.
+      ctx.addIssue({
+        code: 'custom',
+        path: ['priceRupees'],
+        message: 'The maximum price is ₹10,00,000',
+      });
     }
   });
 type FormValues = z.infer<typeof formSchema>;
@@ -102,47 +122,102 @@ export interface ItemFormProps {
 }
 
 /**
- * A step in the form.
- *
- * The numeral is set in the same monospaced-figure style used for money and
- * counts, in the accent colour, with the step title as a real heading beside
- * it. The previous grey disc gave the number more visual weight than the
- * label it introduced, which is backwards — the number is a wayfinding aid,
- * the label is the question being asked.
+ * Outlined pill option. Selected = filled: red for categories and for a
+ * listing's options, black for a need's options — as in the design.
+ */
+function PillChip({
+  label,
+  selected,
+  fill = 'red',
+  icon,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  fill?: 'red' | 'black';
+  icon?: (color: string) => ReactNode;
+  onPress: () => void;
+}) {
+  const bg = selected ? (fill === 'red' ? M.red : '#111111') : 'transparent';
+  const fg = selected ? '#FFFFFF' : M.ink;
+  return (
+    <Press
+      haptic="selection"
+      scale="sm"
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={{
+        height: 42,
+        paddingHorizontal: 16,
+        borderRadius: 21,
+        borderWidth: 1.3,
+        borderColor: selected ? bg : '#2A2A2A',
+        backgroundColor: bg,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+      }}
+    >
+      {icon ? icon(fg) : null}
+      <RNText style={{ fontFamily: 'InterTight_600SemiBold', fontSize: 15.5, color: fg }}>
+        {label}
+      </RNText>
+    </Press>
+  );
+}
+
+/**
+ * A step in the form: an outlined red numbered circle, "Step n", the question
+ * as a bold heading, and a short hint.
  */
 function StepLabel({ n, label, hint }: { n: number; label: string; hint?: string }) {
   return (
-    <Row gap="md" align="flex-start" style={{ marginBottom: spacing.md }}>
-      {/* A numbered stop on the guided path: a warm disc that reads as a
-          progress marker, not a form-field decoration. */}
+    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 14, marginBottom: 14 }}>
       <View
         style={{
-          width: 28,
-          height: 28,
-          borderRadius: radii.pill,
-          backgroundColor: colors.accentSoft,
-          borderWidth: 1,
-          borderColor: colors.accentBorder,
+          width: 38,
+          height: 38,
+          borderRadius: 19,
+          borderWidth: 1.6,
+          borderColor: M.red,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Text variant="label" numeric tone="accent" style={{ fontWeight: '700' }}>
+        <RNText style={{ fontFamily: 'InterTight_700Bold', fontSize: 17, color: M.red }}>
           {n}
-        </Text>
+        </RNText>
       </View>
-      <View style={{ flex: 1, gap: 1 }}>
-        <Text variant="overline" tone="muted">
+      <View style={{ flex: 1 }}>
+        <RNText style={{ fontFamily: 'InterTight_600SemiBold', fontSize: 14, color: '#666' }}>
           Step {n}
-        </Text>
-        <Text variant="h3">{label}</Text>
+        </RNText>
+        <RNText
+          style={{
+            fontFamily: 'InterTight_800ExtraBold',
+            fontSize: 21,
+            color: M.ink,
+            letterSpacing: -0.4,
+          }}
+        >
+          {label}
+        </RNText>
         {hint ? (
-          <Text variant="bodySm" tone="secondary">
+          <RNText
+            style={{
+              fontFamily: 'InterTight_400Regular',
+              fontSize: 15,
+              color: '#666',
+              marginTop: 1,
+            }}
+          >
             {hint}
-          </Text>
+          </RNText>
         ) : null}
       </View>
-    </Row>
+    </View>
   );
 }
 
@@ -152,7 +227,16 @@ export function ItemForm({ kind, mode, initial, submitting, error, onSubmit }: I
   const [photos, setPhotos] = useState<string[]>([]);
 
   const [addingCategory, setAddingCategory] = useState(false);
-  const { control, handleSubmit, formState, watch, setValue } = useForm<FormValues>({
+  const blank: FormValues = {
+    categoryId: '',
+    type: 'service',
+    title: '',
+    description: '',
+    publish: true,
+    transactionType: 'barter',
+    priceRupees: '',
+  };
+  const { control, handleSubmit, formState, watch, setValue, reset } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       categoryId: initial?.category.id ?? '',
@@ -165,6 +249,101 @@ export function ItemForm({ kind, mode, initial, submitting, error, onSubmit }: I
         initial?.pricing?.priceAmount != null ? String(initial.pricing.priceAmount / 100) : '',
     },
   });
+
+  /* ------------------------------------------------------------- drafts -- */
+  // Only the CREATE flow keeps a draft (edit always starts from the saved item).
+  // The form is not shown until the saved draft has been loaded, so an async
+  // restore can never overwrite something the user has just typed.
+  const keepsDraft = mode === 'create';
+  const [hydrated, setHydrated] = useState(!keepsDraft);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pending = useRef<DraftValues | null>(null);
+
+  useEffect(() => {
+    if (!keepsDraft) return undefined;
+    allowSaving(kind);
+    let alive = true;
+    void (async () => {
+      const d = await loadDraft(kind);
+      if (d && alive) {
+        reset({
+          categoryId: d.categoryId,
+          type: d.type,
+          title: d.title,
+          description: d.description,
+          publish: d.publish,
+          transactionType: isHave ? d.transactionType : 'barter',
+          priceRupees: d.priceRupees,
+        });
+        const usable = await validPhotos(d.photos);
+        if (alive) setPhotos(usable);
+      }
+      if (alive) setHydrated(true);
+    })();
+    return () => {
+      alive = false;
+    };
+    // Load once per mount; `reset`/`kind` are stable for this screen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const flush = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    const v = pending.current;
+    pending.current = null;
+    if (!v) return;
+    void (isEmptyDraft(v) ? clearDraft(kind) : saveDraft(kind, v));
+  };
+
+  const all = watch();
+  const snapshot = JSON.stringify([all, photos]);
+  useEffect(() => {
+    if (!keepsDraft || !hydrated) return;
+    pending.current = {
+      categoryId: all.categoryId ?? '',
+      type: all.type ?? 'service',
+      title: all.title ?? '',
+      description: all.description ?? '',
+      publish: all.publish ?? true,
+      transactionType: all.transactionType ?? 'barter',
+      priceRupees: all.priceRupees ?? '',
+      photos,
+    };
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(flush, 400);
+    // `snapshot` captures every field + photos.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snapshot, hydrated, keepsDraft]);
+
+  // Leaving the screen (back, another tab) must NOT lose the last keystrokes:
+  // write anything still waiting for the debounce. It never deletes the draft.
+  useEffect(() => () => flush(), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const doClear = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    pending.current = null;
+    reset(blank);
+    setPhotos([]);
+    void clearDraft(kind);
+  };
+  // Destructive, so it asks first. Alert is a no-op on web, hence the confirm there.
+  const confirmClear = () => {
+    const title = 'Clear all?';
+    const body = isHave
+      ? 'This removes everything you have entered for this listing and starts again.'
+      : 'This removes everything you have entered for this request and starts again.';
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm?.(`${title}\n\n${body}`)) doClear();
+      return;
+    }
+    haptic.warning();
+    Alert.alert(title, body, [
+      { text: 'Keep draft', style: 'cancel' },
+      { text: 'Clear all', style: 'destructive', onPress: doClear },
+    ]);
+  };
 
   const title = watch('title');
   const description = watch('description');
@@ -197,7 +376,9 @@ export function ItemForm({ kind, mode, initial, submitting, error, onSubmit }: I
   const formError =
     error instanceof ApiError ? error.message : error ? 'Could not save. Try again.' : null;
 
-  const tone = isHave ? ('accent' as const) : ('need' as const);
+  const optionFill = isHave ? ('red' as const) : ('black' as const);
+
+  if (!hydrated) return <View style={{ flex: 1 }} />;
 
   return (
     <ScrollView
@@ -214,8 +395,8 @@ export function ItemForm({ kind, mode, initial, submitting, error, onSubmit }: I
           <GuideRail
             steps={
               isHave
-                ? ['Item', 'Photos', 'Details', 'Want', 'Publish']
-                : ['Need', 'Kind', 'Details', 'Photos', 'Publish']
+                ? ['Item', 'Photos', 'Details', 'Want', 'Preview']
+                : ['Need', 'Kind', 'Details', 'Photos', 'Preview']
             }
             done={guideDone}
           />
@@ -230,27 +411,21 @@ export function ItemForm({ kind, mode, initial, submitting, error, onSubmit }: I
               <View style={{ gap: spacing.sm }}>
                 <Row gap="sm" style={{ flexWrap: 'wrap' }}>
                   {(categories.data ?? []).map((c) => (
-                    <Chip
+                    <PillChip
                       key={c.id}
                       label={c.name}
-                      tone={tone}
                       selected={field.value === c.id}
-                      icon={
-                        <Ionicons
-                          name={categoryIcon(c.slug)}
-                          size={13}
-                          color={field.value === c.id ? colors.textInverse : colors.textMuted}
-                        />
-                      }
+                      icon={(color) => (
+                        <Ionicons name={categoryIcon(c.slug)} size={16} color={color} />
+                      )}
                       onPress={() => field.onChange(c.id)}
                     />
                   ))}
                   {/* Nothing fits? Members can add a category right here. */}
-                  <Chip
+                  <PillChip
                     label="New category"
-                    tone={tone}
                     selected={false}
-                    icon={<Ionicons name="add" size={14} color={colors.accent} />}
+                    icon={() => <Ionicons name="add" size={18} color={M.red} />}
                     onPress={() => setAddingCategory(true)}
                   />
                 </Row>
@@ -281,18 +456,12 @@ export function ItemForm({ kind, mode, initial, submitting, error, onSubmit }: I
             render={({ field }) => (
               <Row gap="sm">
                 {(['product', 'service', 'skill'] as const).map((t) => (
-                  <Chip
+                  <PillChip
                     key={t}
                     label={TYPE_LABEL[t]}
-                    tone={tone}
+                    fill={optionFill}
                     selected={field.value === t}
-                    icon={
-                      <Ionicons
-                        name={typeIcon(t)}
-                        size={13}
-                        color={field.value === t ? colors.textInverse : colors.textMuted}
-                      />
-                    }
+                    icon={(color) => <Ionicons name={typeIcon(t)} size={16} color={color} />}
                     onPress={() => field.onChange(t)}
                   />
                 ))}
@@ -313,9 +482,9 @@ export function ItemForm({ kind, mode, initial, submitting, error, onSubmit }: I
                     control={control}
                     name="transactionType"
                     render={({ field }) => (
-                      <Chip
+                      <PillChip
                         label={TRANSACTION_TYPE_LABEL[t]}
-                        tone={tone}
+                        fill={optionFill}
                         selected={field.value === t}
                         onPress={() => field.onChange(t)}
                       />
@@ -444,7 +613,10 @@ export function ItemForm({ kind, mode, initial, submitting, error, onSubmit }: I
                 </View>
                 <Switch
                   value={field.value}
-                  onValueChange={field.onChange}
+                  onValueChange={(next) => {
+                    haptic.selection();
+                    field.onChange(next);
+                  }}
                   trackColor={{ true: isHave ? colors.accent : colors.need }}
                   accessibilityLabel="Publish now"
                 />
@@ -479,6 +651,22 @@ export function ItemForm({ kind, mode, initial, submitting, error, onSubmit }: I
           disabled={formState.isSubmitting}
           onPress={submit}
         />
+
+        {mode === 'create' ? (
+          <Press
+            haptic="light"
+            scale="md"
+            accessibilityRole="button"
+            accessibilityLabel="Clear All"
+            onPress={confirmClear}
+            hitSlop={10}
+            style={{ alignSelf: 'center', paddingVertical: 12, paddingHorizontal: 20 }}
+          >
+            <RNText style={{ fontFamily: 'InterTight_700Bold', fontSize: 16, color: M.red }}>
+              Clear All
+            </RNText>
+          </Press>
+        ) : null}
       </Stack>
     </ScrollView>
   );

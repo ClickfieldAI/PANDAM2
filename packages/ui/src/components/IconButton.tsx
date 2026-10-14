@@ -67,6 +67,7 @@ export function IconButton({
   return (
     <Press
       scale="lg"
+      haptic="light"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}

@@ -111,6 +111,7 @@ export function ListRow({
 
   return (
     <Press
+      haptic="light"
       scale="none"
       dim={false}
       accessibilityRole="button"

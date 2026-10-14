@@ -36,6 +36,7 @@ import { mediaUrl, readUploadedImage, requireMedia } from '../../../lib/media';
 import { toMarketItem } from '../../../lib/serialize';
 import { parseBody, parseQuery } from '../../../lib/validate';
 import { authMiddleware, getAuth, requireAuth } from '../../../middleware/auth';
+import { alertNeedMatches } from '../../../services/need-alerts';
 import { type AppEnv } from '../../../types';
 
 type Kind = 'listing' | 'need';
@@ -161,6 +162,10 @@ export function createMarketRoute(kind: Kind) {
     const created = await crud.create({ ...input, ownerId: user.id });
     const withRefs = await one(created.id);
     if (!withRefs) throw new ApiError('internal_error', 'Created item could not be loaded.');
+    // A request that is live from the start tells people who have a match.
+    if (cfg.kind === 'need' && created.status === 'published') {
+      await alertNeedMatches(c, created);
+    }
     return sendOk(c, { item: toMarketItem(withRefs, cfg.kind) }, 201);
   });
 
@@ -222,6 +227,11 @@ export function createMarketRoute(kind: Kind) {
     }
     const { status } = await parseBody(c, setListingStatusSchema);
     await crud.setStatus(id, status);
+    // Only the move INTO published alerts; re-publishing is a no-op because
+    // `alertNeedMatches` also skips anyone already told about this request.
+    if (cfg.kind === 'need' && status === 'published' && current.status !== 'published') {
+      await alertNeedMatches(c, current);
+    }
     const withRefs = await one(id);
     return sendOk(c, { item: toMarketItem(withRefs!, cfg.kind) });
   });

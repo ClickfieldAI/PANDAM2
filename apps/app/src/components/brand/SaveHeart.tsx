@@ -8,7 +8,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
-import { colors, useMotionOK } from '@pandam/ui';
+import { colors, haptic, useMotionOK } from '@pandam/ui';
 
 /**
  * A save heart that pops with a spring when tapped.
@@ -30,6 +30,7 @@ export function SaveHeart({ size = 34 }: { size?: number }) {
       accessibilityState={{ selected: saved }}
       hitSlop={8}
       onPress={() => {
+        haptic.selection();
         setSaved((s) => !s);
         if (motionOK) {
           pop.set(

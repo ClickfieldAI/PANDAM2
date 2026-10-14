@@ -48,7 +48,10 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     // request failed" vs. an abort vs. something else) is ever visible, so
     // log it rather than silently discarding it.
     console.error('[apiFetch] fetch failed for', path, err);
-    throw new ApiError('Could not reach the PANDAM API.', 'network_error', 0);
+    // In development, name the address that was tried: "could not reach" alone
+    // cannot tell a wrong host from a blocked port.
+    const where = __DEV__ ? ` (${clientEnv.apiUrl})` : '';
+    throw new ApiError(`Could not reach the PANDAM API${where}.`, 'network_error', 0);
   }
 
   let body: ApiEnvelope<T> | null = null;

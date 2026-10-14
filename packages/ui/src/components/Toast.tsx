@@ -11,6 +11,7 @@ import {
 import { AccessibilityInfo, Animated, Easing, Platform, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { haptic } from '../haptics';
 import { colors, layout, palette, radii, shadows, spacing, timings } from '../tokens';
 
 import { Press } from './Press';
@@ -112,6 +113,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     (options: ToastOptions) => {
       if (timer.current) clearTimeout(timer.current);
       counter.current += 1;
+      // Tactile twin of the visual outcome. `show` is only called once a
+      // request has actually settled, so this never precedes the result.
+      if (options.kind === 'success') haptic.success();
+      else if (options.kind === 'error') haptic.error();
       setToast({ ...options, id: counter.current });
 
       // Screen readers do not see the toast appear, so announce it.

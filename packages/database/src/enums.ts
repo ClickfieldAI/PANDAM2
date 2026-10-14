@@ -81,6 +81,7 @@ export const NOTIFICATION_TYPE = [
   'transaction_updated',
   'review_reminder',
   'review_received',
+  'need_match',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPE)[number];
 

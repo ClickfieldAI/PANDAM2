@@ -5,21 +5,24 @@ import { useEffect, useRef, useState } from 'react';
 import { Image, Linking, Platform, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import {
-  Button,
-  Row,
-  Screen,
-  Stack,
-  Text,
-  colors,
-  layout,
-  palette,
-  radii,
-  spacing,
-} from '@pandam/ui';
+import { Text, colors, layout, palette, radii, spacing } from '@pandam/ui';
 
-import { AppHeader } from '@/components/AppHeader';
-import { CheckRow, StatusState, StepIcon } from '@/components/verification/parts';
+import {
+  CameraShape,
+  CenterBody,
+  CenterTitle,
+  Concrete,
+  Lead,
+  PageTitle,
+  RedRow,
+  RedShape,
+  SpinnerDisc,
+  SuccessBadge,
+  TextAction,
+  VerifyShell,
+  WideCta,
+  useScreen,
+} from '@/components/verification/VerifyUI';
 import { useSession } from '@/lib/auth/hooks';
 import { faceVerifier, useApplyVerification } from '@/lib/verification';
 
@@ -45,6 +48,7 @@ const CAM_PROMPT: Record<CamStage, string> = {
 export default function FaceVerificationScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { w, h } = useScreen();
   const { user } = useSession();
   const apply = useApplyVerification();
   const [permission, requestPermission] = useCameraPermissions();
@@ -209,149 +213,161 @@ export default function FaceVerificationScreen() {
   }
 
   /* ------------------------------------------------------------- rest -- */
-  return (
-    <Screen scroll padded={false} edges={['top', 'bottom']}>
-      <View
-        style={{
-          width: '100%',
-          maxWidth: layout.contentMaxWidth,
-          alignSelf: 'center',
-          paddingHorizontal: layout.gutter,
-          paddingTop: spacing.lg,
-          paddingBottom: spacing['3xl'],
-        }}
+  const decorProblem = (
+    <>
+      <RedShape kind="lobe" width={160} height={140} style={{ right: -40, bottom: 20 }} />
+      <Concrete size={150} rotate={-14} style={{ right: -30, bottom: -6 }} />
+    </>
+  );
+
+  if (step === 'intro') {
+    return (
+      <VerifyShell
+        onBack={() => (router.canGoBack() ? router.back() : toHub())}
+        decor={
+          <>
+            <RedShape
+              kind="tall"
+              width={w * 0.5}
+              height={w * 0.58}
+              style={{ right: -w * 0.1, top: 30 }}
+            />
+            <CameraShape size={w * 0.36} style={{ right: -w * 0.16, top: 150 }} />
+          </>
+        }
       >
-        {step === 'intro' ? (
-          <Stack gap="xl">
-            <AppHeader title="Face Verification" back />
-            <StepIcon name="scan-outline" />
-            <Text variant="body" tone="secondary">
-              We&apos;ll use your device camera to capture your face.
-            </Text>
-            <Stack gap="md">
-              <CheckRow icon="happy-outline">Keep your face clearly visible</CheckRow>
-              <CheckRow icon="sunny-outline">Use a well-lit environment</CheckRow>
-              <CheckRow icon="glasses-outline">Remove anything covering your face</CheckRow>
-              <CheckRow icon="scan-outline">Position your face inside the frame</CheckRow>
-            </Stack>
-            <Text variant="caption" tone="muted">
-              Your photo is used only for this verification.
-            </Text>
-            <Button
-              label="Start Face Verification"
-              size="lg"
-              fullWidth
-              onPress={() => void openCamera()}
-            />
-          </Stack>
-        ) : null}
+        <PageTitle size={38}>Face Verification</PageTitle>
+        <Lead style={{ maxWidth: 270 }}>
+          We&apos;ll use your device camera to capture your face.
+        </Lead>
+        <View style={{ gap: 18, marginTop: 24 }}>
+          <RedRow icon="happy-outline">Keep your face clearly visible</RedRow>
+          <RedRow icon="sunny-outline">Use a well-lit environment</RedRow>
+          <RedRow icon="glasses-outline">Remove anything covering your face</RedRow>
+          <RedRow icon="scan-outline">Position your face inside the frame</RedRow>
+        </View>
+        <Text variant="bodySm" style={{ color: '#555', marginTop: 24 }}>
+          Your photo is used only for this verification.
+        </Text>
+        <View style={{ marginTop: 16 }}>
+          <WideCta label="Start Face Verification" onPress={() => void openCamera()} />
+        </View>
+      </VerifyShell>
+    );
+  }
 
-        {step === 'preview' && photo ? (
-          <Stack gap="xl" align="center">
-            <AppHeader title="Check your photo" />
-            <Image
-              source={{ uri: photo }}
-              style={{
-                width: 240,
-                height: 310,
-                borderRadius: 150,
-                backgroundColor: colors.surfaceMuted,
-              }}
-              resizeMode="cover"
-              accessibilityLabel="Your captured selfie"
-            />
-            <Text variant="bodySm" tone="secondary" center>
-              Make sure your whole face is visible and in focus.
-            </Text>
-            <Row gap="md" style={{ alignSelf: 'stretch' }}>
-              <View style={{ flex: 1 }}>
-                <Button
-                  label="Retake"
-                  variant="secondary"
-                  size="lg"
-                  fullWidth
-                  onPress={() => void openCamera()}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Button label="Continue" size="lg" fullWidth onPress={() => void submit()} />
-              </View>
-            </Row>
-          </Stack>
-        ) : null}
-
-        {step === 'working' ? (
-          <StatusState
-            kind="working"
-            title="Verifying..."
-            body="This usually takes a few seconds."
+  if (step === 'preview' && photo) {
+    return (
+      <VerifyShell onBack={() => void openCamera()}>
+        <PageTitle>{'Check your\nphoto'}</PageTitle>
+        <View style={{ alignItems: 'center', marginTop: 22, gap: 16 }}>
+          <Image
+            source={{ uri: photo }}
+            style={{ width: 240, height: 310, borderRadius: 150, backgroundColor: '#EDEBE6' }}
+            resizeMode="cover"
+            accessibilityLabel="Your captured selfie"
           />
-        ) : null}
+          <CenterBody>Make sure your whole face is visible and in focus.</CenterBody>
+        </View>
+        <View style={{ marginTop: 22, gap: 4 }}>
+          <WideCta label="Continue" onPress={() => void submit()} />
+          <TextAction label="Retake" onPress={() => void openCamera()} />
+        </View>
+      </VerifyShell>
+    );
+  }
 
-        {step === 'success' ? (
-          <StatusState kind="success" title="Face Verification Complete">
-            <Button
-              label="Continue"
-              size="lg"
-              fullWidth
-              onPress={() =>
-                router.replace(
-                  user?.identityVerification?.status === 'verified'
-                    ? '/(onboarding)/verify/complete'
-                    : '/(onboarding)/verify',
-                )
-              }
-            />
-          </StatusState>
-        ) : null}
+  if (step === 'working') {
+    return (
+      <VerifyShell
+        center
+        decor={
+          <>
+            <RedShape kind="round" width={230} height={230} style={{ right: -70, bottom: -20 }} />
+            <Concrete size={w * 0.72} rotate={-6} style={{ left: -w * 0.1, bottom: -30 }} />
+          </>
+        }
+      >
+        <View style={{ gap: 18, paddingBottom: h * 0.2 }}>
+          <SpinnerDisc />
+          <CenterTitle>Verifying...</CenterTitle>
+          <CenterBody>This usually takes a few seconds.</CenterBody>
+        </View>
+      </VerifyShell>
+    );
+  }
 
+  if (step === 'success') {
+    return (
+      <VerifyShell
+        center
+        decor={
+          <>
+            <RedShape kind="wave" width={w} height={h * 0.36} style={{ left: 0, bottom: 0 }} />
+            <Concrete size={w * 0.5} rotate={-8} style={{ right: -w * 0.1, bottom: -20 }} />
+          </>
+        }
+      >
+        <View style={{ gap: 22, paddingBottom: h * 0.14 }}>
+          <SuccessBadge />
+          <CenterTitle>{'Face Verification\nComplete'}</CenterTitle>
+          <WideCta
+            label="Continue"
+            onPress={() =>
+              router.replace(
+                user?.identityVerification?.status === 'verified'
+                  ? '/(onboarding)/verify/complete'
+                  : '/(onboarding)/verify',
+              )
+            }
+          />
+        </View>
+      </VerifyShell>
+    );
+  }
+
+  const problem =
+    step === 'denied'
+      ? {
+          title: 'Camera access\nneeded',
+          body: 'Camera access is required for face verification.',
+        }
+      : step === 'captureError'
+        ? {
+            title: "Couldn't\ncapture",
+            body: "We couldn't capture your face clearly. Please try again.",
+          }
+        : {
+            title: 'Something\nwent wrong',
+            body: "We couldn't complete face verification. Please try again.",
+          };
+
+  return (
+    <VerifyShell center decor={decorProblem}>
+      <View style={{ gap: 16, paddingBottom: h * 0.1 }}>
+        <CenterTitle>{problem.title}</CenterTitle>
+        <CenterBody>{problem.body}</CenterBody>
         {step === 'denied' ? (
-          <StatusState
-            kind="problem"
-            title="Camera access needed"
-            body="Camera access is required for face verification."
-          >
-            {canAskAgain || Platform.OS === 'web' ? (
-              <Button label="Allow camera" size="lg" fullWidth onPress={() => void openCamera()} />
-            ) : (
-              <Button
-                label="Open settings"
-                size="lg"
-                fullWidth
-                onPress={() => void Linking.openSettings()}
-              />
-            )}
-            <Button label="Back to verification" variant="quiet" fullWidth onPress={toHub} />
-          </StatusState>
-        ) : null}
-
-        {step === 'captureError' ? (
-          <StatusState
-            kind="problem"
-            title="Couldn't capture"
-            body="We couldn't capture your face clearly. Please try again."
-          >
-            <Button label="Try again" size="lg" fullWidth onPress={() => void openCamera()} />
-            <Button label="Back to verification" variant="quiet" fullWidth onPress={toHub} />
-          </StatusState>
-        ) : null}
-
-        {step === 'failed' ? (
-          <StatusState
-            kind="problem"
-            title="Something went wrong"
-            body="We couldn't complete face verification. Please try again."
-          >
-            <Button label="Try again" size="lg" fullWidth onPress={() => void submit()} />
-            <Button
-              label="Retake photo"
-              variant="quiet"
-              fullWidth
-              onPress={() => void openCamera()}
+          canAskAgain || Platform.OS === 'web' ? (
+            <WideCta label="Allow camera" arrow={false} onPress={() => void openCamera()} />
+          ) : (
+            <WideCta
+              label="Open settings"
+              arrow={false}
+              onPress={() => void Linking.openSettings()}
             />
-          </StatusState>
-        ) : null}
+          )
+        ) : step === 'failed' ? (
+          <WideCta label="Try again" arrow={false} onPress={() => void submit()} />
+        ) : (
+          <WideCta label="Try again" arrow={false} onPress={() => void openCamera()} />
+        )}
+        {step === 'failed' ? (
+          <TextAction label="Retake photo" onPress={() => void openCamera()} />
+        ) : (
+          <TextAction label="Back to verification" onPress={toHub} />
+        )}
       </View>
-    </Screen>
+    </VerifyShell>
   );
 }

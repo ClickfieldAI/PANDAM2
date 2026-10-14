@@ -8,6 +8,7 @@
  */
 export * from './tokens';
 export { cx } from './cx';
+export { haptic, type HapticKind } from './haptics';
 
 export { Text, Heading, type TextProps } from './components/Text';
 export { Button, type ButtonProps } from './components/Button';
