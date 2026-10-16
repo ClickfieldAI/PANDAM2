@@ -1,6 +1,6 @@
 import { type StyleProp, View, type ViewStyle } from 'react-native';
 
-import { colors } from '../tokens';
+import { useThemeColors } from '../theme';
 
 import { Text } from './Text';
 
@@ -27,12 +27,15 @@ export interface CountBadgeProps {
  */
 export function CountBadge({
   value,
-  color = colors.accent,
+  color: colorProp,
   ringColor,
   size = 18,
   max = 9,
   style,
 }: CountBadgeProps) {
+  const colors = useThemeColors();
+  const color = colorProp ?? colors.accent;
+
   const ring = ringColor ? 2 : 0;
   const inner = size - ring * 2;
   const label = value > max ? `${max}+` : String(value);

@@ -12,8 +12,8 @@ import {
   SkeletonList,
   Stack,
   Text,
-  colors,
   layout,
+  useThemeColors,
 } from '@pandam/ui';
 
 import { AddCategorySheet } from '@/components/AddCategorySheet';
@@ -37,13 +37,10 @@ import { useSession } from '@/lib/auth/hooks';
 import { useBrowseCategories } from '@/lib/hooks/useCategories';
 import { useDiscover, useMyItems, useRecommendations } from '@/lib/hooks/useMarket';
 import { useMatches } from '@/lib/hooks/useMatches';
+import { TourTarget } from '@/lib/tour/TourTarget';
 
 /** Swiss editorial palette — exact spec values, deliberately tiny. */
 const ORANGE = '#FF3B20';
-const INK = '#111111';
-const MUTED = '#666666';
-const BG = '#F8F7F3';
-const CARD = '#E9E6DF';
 /** Page margin on the 8pt spacing scale. */
 const G = 20;
 
@@ -66,6 +63,10 @@ function SectionTitle({
   actionLabel?: string;
   onAction?: () => void;
 }) {
+  const colors = useThemeColors();
+  const MUTED = colors.textMuted;
+  const INK = colors.textPrimary;
+
   return (
     <View
       style={{
@@ -127,6 +128,10 @@ function StatChip({
   label: string;
   onPress: () => void;
 }) {
+  const colors = useThemeColors();
+  const INK = colors.textPrimary;
+  const MUTED = colors.textMuted;
+
   return (
     <Press
       scale="sm"
@@ -165,6 +170,11 @@ function StatChip({
 /* -------------------------------------------------------------------------- */
 
 export default function HomeScreen() {
+  const colors = useThemeColors();
+  const BG = colors.background;
+  const MUTED = colors.textMuted;
+  const INK = colors.textPrimary;
+
   const router = useRouter();
   const { width } = useWindowDimensions();
   const wide = width >= 1024;
@@ -282,40 +292,49 @@ export default function HomeScreen() {
           </View>
 
           {/* --------------------------------------------------- search -- */}
-          <Press
-            scale="sm"
-            accessibilityRole="button"
-            accessibilityLabel="Search what people are offering"
-            onPress={() => goDiscover()}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 10,
-              backgroundColor: '#FFFFFF',
-              borderWidth: 1,
-              borderColor: CARD,
-              borderRadius: 16,
-              paddingHorizontal: 16,
-              height: 50,
-            }}
-          >
-            <Ionicons name="search" size={18} color={MUTED} />
-            <Text
-              style={{ flex: 1, fontFamily: 'InterTight_400Regular', fontSize: 14.5, color: MUTED }}
-              numberOfLines={1}
+          <TourTarget id="home-search">
+            <Press
+              scale="sm"
+              accessibilityRole="button"
+              accessibilityLabel="Search what people are offering"
+              onPress={() => goDiscover()}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                backgroundColor: colors.surface,
+                borderWidth: 1,
+                borderColor: colors.borderSoft,
+                borderRadius: 16,
+                paddingHorizontal: 16,
+                height: 50,
+              }}
             >
-              Search cameras, skills, furniture…
-            </Text>
-            <Ionicons name="options-outline" size={18} color={INK} />
-          </Press>
+              <Ionicons name="search" size={18} color={MUTED} />
+              <Text
+                style={{
+                  flex: 1,
+                  fontFamily: 'InterTight_400Regular',
+                  fontSize: 14.5,
+                  color: MUTED,
+                }}
+                numberOfLines={1}
+              >
+                Search cameras, skills, furniture…
+              </Text>
+              <Ionicons name="options-outline" size={18} color={INK} />
+            </Press>
+          </TourTarget>
 
           {/* ------------------------------------------- I HAVE / I NEED -- */}
-          <IntentSwitch
-            haveCount={activeHave}
-            needCount={activeNeed}
-            onHave={() => router.push('/(app)/new-listing')}
-            onNeed={() => router.push('/(app)/new-need')}
-          />
+          <TourTarget id="home-intent">
+            <IntentSwitch
+              haveCount={activeHave}
+              needCount={activeNeed}
+              onHave={() => router.push('/(app)/new-listing')}
+              onNeed={() => router.push('/(app)/new-need')}
+            />
+          </TourTarget>
 
           {/* -------------------------------------------------- matches -- */}
           <Press
@@ -327,7 +346,7 @@ export default function HomeScreen() {
               flexDirection: 'row',
               alignItems: 'center',
               gap: 12,
-              backgroundColor: '#FFFFFF',
+              backgroundColor: colors.surface,
               borderWidth: 1,
               borderColor: ORANGE,
               borderRadius: 16,
@@ -481,9 +500,9 @@ export default function HomeScreen() {
           <View
             style={{
               flexDirection: 'row',
-              backgroundColor: '#FFFFFF',
+              backgroundColor: colors.surface,
               borderWidth: 1,
-              borderColor: CARD,
+              borderColor: colors.borderSoft,
               borderRadius: 16,
             }}
           >
@@ -492,13 +511,13 @@ export default function HomeScreen() {
               label="listed"
               onPress={() => router.push('/(app)/(tabs)/profile')}
             />
-            <View style={{ width: 1, backgroundColor: CARD }} />
+            <View style={{ width: 1, backgroundColor: colors.surfaceMuted }} />
             <StatChip
               value={activeNeed}
               label="wanted"
               onPress={() => router.push('/(app)/(tabs)/profile')}
             />
-            <View style={{ width: 1, backgroundColor: CARD }} />
+            <View style={{ width: 1, backgroundColor: colors.surfaceMuted }} />
             <StatChip
               value={matchCount}
               label="matches"
@@ -511,11 +530,11 @@ export default function HomeScreen() {
             <View
               style={{
                 borderWidth: 1,
-                borderColor: CARD,
+                borderColor: colors.borderSoft,
                 borderRadius: 16,
                 padding: 16,
                 gap: 8,
-                backgroundColor: '#FFFFFF',
+                backgroundColor: colors.surface,
               }}
             >
               <Text

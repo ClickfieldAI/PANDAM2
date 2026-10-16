@@ -4,7 +4,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 
 import { useMotionOK } from '@pandam/ui';
 
-import { M } from '@/components/matches/MatchesUI';
+import { useM } from '@/components/matches/MatchesUI';
 
 /**
  * The guided path above the create form: an outlined container with a numbered
@@ -13,6 +13,8 @@ import { M } from '@/components/matches/MatchesUI';
  * the form's state and never drives it.
  */
 export function GuideRail({ steps, done }: { steps: string[]; done: number }) {
+  const M = useM();
+
   const motionOK = useMotionOK();
   const p = useSharedValue(0);
   const target = Math.min(1, done / Math.max(1, steps.length - 1));
@@ -26,7 +28,7 @@ export function GuideRail({ steps, done }: { steps: string[]; done: number }) {
       style={{
         borderRadius: 6,
         borderWidth: 1.4,
-        borderColor: M.ink,
+        borderColor: M.line,
         backgroundColor: M.bg,
         paddingHorizontal: 18,
         paddingTop: 22,
@@ -34,7 +36,7 @@ export function GuideRail({ steps, done }: { steps: string[]; done: number }) {
       }}
     >
       <View style={{ height: 24, justifyContent: 'center', marginHorizontal: 11 }}>
-        <View style={{ height: 3, borderRadius: 2, backgroundColor: '#D9D7D1' }} />
+        <View style={{ height: 3, borderRadius: 2, backgroundColor: M.border }} />
         <Animated.View
           style={[
             { position: 'absolute', height: 3, borderRadius: 2, backgroundColor: M.red },
@@ -62,7 +64,7 @@ export function GuideRail({ steps, done }: { steps: string[]; done: number }) {
                   borderRadius: 12,
                   backgroundColor: current || reached ? M.red : M.bg,
                   borderWidth: current || reached ? 0 : 1.8,
-                  borderColor: M.ink,
+                  borderColor: M.line,
                 }}
               />
             );
@@ -79,7 +81,7 @@ export function GuideRail({ steps, done }: { steps: string[]; done: number }) {
               textAlign: i === 0 ? 'left' : i === steps.length - 1 ? 'right' : 'center',
               fontFamily: i === done ? 'InterTight_700Bold' : 'InterTight_400Regular',
               fontSize: 13.5,
-              color: i <= done ? M.red : '#555',
+              color: i <= done ? M.red : M.secondary,
             }}
           >
             {s}

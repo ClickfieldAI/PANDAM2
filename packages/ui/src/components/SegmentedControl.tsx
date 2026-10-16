@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, View } from 'react-native';
 
-import { colors, radii, shadows, spacing, timings } from '../tokens';
+import { useThemeColors } from '../theme';
+import { radii, shadows, spacing, timings } from '../tokens';
+import { type ThemeColors } from '../tokens';
 
 import { Press } from './Press';
 import { Text } from './Text';
@@ -19,11 +21,12 @@ export interface SegmentedControlProps<T extends string> {
   onChange: (value: T) => void;
 }
 
-const TONE_BG = {
-  accent: colors.accent,
-  need: colors.need,
-  match: colors.match,
-} as const;
+const makeTONE_BG = (colors: ThemeColors) =>
+  ({
+    accent: colors.accent,
+    need: colors.need,
+    match: colors.match,
+  }) as const;
 
 /**
  * Two-or-three way switch with a sliding thumb.
@@ -39,6 +42,8 @@ export function SegmentedControl<T extends string>({
   value,
   onChange,
 }: SegmentedControlProps<T>) {
+  const colors = useThemeColors();
+
   const index = Math.max(
     0,
     options.findIndex((o) => o.value === value),
@@ -84,7 +89,7 @@ export function SegmentedControl<T extends string>({
               left: 3,
               width: segmentWidth,
               borderRadius: radii.pill,
-              backgroundColor: TONE_BG[activeTone],
+              backgroundColor: makeTONE_BG(colors)[activeTone],
               transform: [
                 {
                   translateX: offset.interpolate({

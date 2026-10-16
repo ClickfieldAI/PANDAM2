@@ -1,7 +1,9 @@
 import { type ReactNode } from 'react';
 import { View } from 'react-native';
 
-import { colors, radii, spacing } from '../tokens';
+import { useThemeColors } from '../theme';
+import { radii, spacing } from '../tokens';
+import { type ThemeColors } from '../tokens';
 
 import { Text } from './Text';
 
@@ -19,16 +21,18 @@ export interface NoticeProps {
   action?: ReactNode;
 }
 
-const SPEC: Record<
+const makeSPEC = (
+  colors: ThemeColors,
+): Record<
   NoticeKind,
   { bg: string; border: string; tone: 'danger' | 'warning' | 'success' | 'secondary' | 'muted' }
-> = {
+> => ({
   info: { bg: colors.infoSoft, border: colors.infoBorder, tone: 'secondary' },
   success: { bg: colors.successSoft, border: colors.accentBorder, tone: 'success' },
   warning: { bg: colors.warningSoft, border: colors.warningBorder, tone: 'warning' },
   danger: { bg: colors.dangerSoft, border: colors.dangerBorder, tone: 'danger' },
   neutral: { bg: colors.surfaceMuted, border: colors.border, tone: 'muted' },
-};
+});
 
 /**
  * An inline message attached to the thing it is about — a form error, a
@@ -44,7 +48,9 @@ const SPEC: Record<
  * off-white page, and a border alone reads as an empty input.
  */
 export function Notice({ children, kind = 'neutral', title, icon, action }: NoticeProps) {
-  const spec = SPEC[kind];
+  const colors = useThemeColors();
+
+  const spec = makeSPEC(colors)[kind];
 
   return (
     <View

@@ -19,4 +19,5 @@ export * from './review';
 export * from './notification';
 export * from './report';
 export * from './payment';
+export * from './demo-fee';
 export * from './category';

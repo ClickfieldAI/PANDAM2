@@ -15,17 +15,16 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Notice, Press, colors, useToast } from '@pandam/ui';
+import { Notice, Press, useToast, useThemeColors, type ThemeColors } from '@pandam/ui';
 
 import { AvatarPicker, choosePhoto } from '@/components/AvatarPicker';
-import { M } from '@/components/matches/MatchesUI';
+import { useM } from '@/components/matches/MatchesUI';
 import {
   AccentLines,
   AvatarRing,
   CornerDecor,
   FieldLabel,
   GUTTER,
-  INPUT_BORDER,
   SectionTitle,
 } from '@/components/profile/ProfileUI';
 import { ApiError } from '@/lib/api/client';
@@ -54,20 +53,25 @@ type ProfileFormValues = z.infer<typeof profileFormSchema>;
 /** The bio counter follows the reference (0/160); typing stops there. */
 const BIO_LIMIT = 160;
 
-const fieldBox = {
-  borderWidth: 1.2,
-  borderColor: INPUT_BORDER,
-  borderRadius: 10,
-  backgroundColor: '#FBFAF7',
-} as const;
+const fieldBoxStyle = (colors: ThemeColors) =>
+  ({
+    borderWidth: 1.2,
+    borderColor: colors.borderSoft,
+    borderRadius: 10,
+    backgroundColor: colors.surface,
+  }) as const;
 
 function Input({ error, ...props }: TextInputProps & { error?: string }) {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   return (
     <View>
       <TextInput
-        placeholderTextColor="#9A9892"
+        placeholderTextColor={colors.textMuted}
         style={[
-          fieldBox,
+          fieldBoxStyle(colors),
           {
             height: 46,
             paddingHorizontal: 14,
@@ -95,6 +99,10 @@ function Input({ error, ...props }: TextInputProps & { error?: string }) {
 }
 
 export default function EditProfileScreen() {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, profile } = useSession();
@@ -197,7 +205,7 @@ export default function EditProfileScreen() {
                   style={{
                     fontFamily: 'InterTight_400Regular',
                     fontSize: 15,
-                    color: '#3A3A3A',
+                    color: colors.textSecondary,
                     marginTop: 2,
                   }}
                 >
@@ -296,7 +304,7 @@ export default function EditProfileScreen() {
                   <FieldLabel>Username</FieldLabel>
                   <View
                     style={[
-                      fieldBox,
+                      fieldBoxStyle(colors),
                       {
                         height: 46,
                         flexDirection: 'row',
@@ -318,7 +326,7 @@ export default function EditProfileScreen() {
                       autoCorrect={false}
                       accessibilityLabel="Username"
                       placeholder="username"
-                      placeholderTextColor="#9A9892"
+                      placeholderTextColor={colors.textMuted}
                       style={{
                         flex: 1,
                         fontFamily: 'InterTight_400Regular',
@@ -358,9 +366,9 @@ export default function EditProfileScreen() {
                     textAlignVertical="top"
                     accessibilityLabel="Bio"
                     placeholder="Tell others what you like to trade..."
-                    placeholderTextColor="#9A9892"
+                    placeholderTextColor={colors.textMuted}
                     style={[
-                      fieldBox,
+                      fieldBoxStyle(colors),
                       {
                         height: 92,
                         paddingHorizontal: 14,
@@ -376,7 +384,7 @@ export default function EditProfileScreen() {
                       alignSelf: 'flex-end',
                       fontFamily: 'InterTight_400Regular',
                       fontSize: 13,
-                      color: '#777',
+                      color: colors.textMuted,
                       marginTop: 4,
                     }}
                   >
@@ -404,7 +412,7 @@ export default function EditProfileScreen() {
                   <FieldLabel>City</FieldLabel>
                   <View
                     style={[
-                      fieldBox,
+                      fieldBoxStyle(colors),
                       {
                         height: 46,
                         flexDirection: 'row',
@@ -422,7 +430,7 @@ export default function EditProfileScreen() {
                       autoCapitalize="words"
                       accessibilityLabel="City"
                       placeholder="Select city"
-                      placeholderTextColor="#777"
+                      placeholderTextColor={colors.textMuted}
                       style={{
                         flex: 1,
                         fontFamily: 'InterTight_400Regular',
@@ -475,7 +483,7 @@ export default function EditProfileScreen() {
                 marginHorizontal: GUTTER,
                 marginTop: 10,
                 borderRadius: 10,
-                backgroundColor: verified ? '#D9EEDD' : '#EDEBE6',
+                backgroundColor: verified ? colors.successSoft : M.track,
                 paddingHorizontal: 14,
                 paddingVertical: 14,
                 flexDirection: 'row',
@@ -486,7 +494,7 @@ export default function EditProfileScreen() {
               <Ionicons
                 name={verified ? 'shield-checkmark' : 'shield-outline'}
                 size={28}
-                color={verified ? M.red : '#777'}
+                color={verified ? M.red : M.secondary}
               />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: 'InterTight_700Bold', fontSize: 17, color: M.ink }}>
@@ -496,7 +504,7 @@ export default function EditProfileScreen() {
                   style={{
                     fontFamily: 'InterTight_400Regular',
                     fontSize: 14,
-                    color: '#444',
+                    color: colors.textSecondary,
                     marginTop: 1,
                   }}
                 >
@@ -505,7 +513,7 @@ export default function EditProfileScreen() {
                     : 'Verify your identity to build trust with other traders'}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#444" />
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
             </Press>
           </View>
         </View>

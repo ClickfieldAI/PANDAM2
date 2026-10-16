@@ -24,16 +24,16 @@ import {
   Row,
   Stack,
   Text,
-  colors,
   layout,
   spacing,
   haptic,
+  useThemeColors,
 } from '@pandam/ui';
 import { boundedString, itemTypeSchema, z } from '@pandam/validation';
 
 import { AddCategorySheet } from '@/components/AddCategorySheet';
 import { GuideRail } from '@/components/brand/GuideRail';
-import { M } from '@/components/matches/MatchesUI';
+import { useM } from '@/components/matches/MatchesUI';
 import { PhotoPicker } from '@/components/PhotoPicker';
 import { ApiError } from '@/lib/api/client';
 import {
@@ -138,7 +138,9 @@ function PillChip({
   icon?: (color: string) => ReactNode;
   onPress: () => void;
 }) {
-  const bg = selected ? (fill === 'red' ? M.red : '#111111') : 'transparent';
+  const M = useM();
+
+  const bg = selected ? (fill === 'red' ? M.red : M.inkFill) : 'transparent';
   const fg = selected ? '#FFFFFF' : M.ink;
   return (
     <Press
@@ -153,7 +155,7 @@ function PillChip({
         paddingHorizontal: 16,
         borderRadius: 21,
         borderWidth: 1.3,
-        borderColor: selected ? bg : '#2A2A2A',
+        borderColor: selected ? bg : M.line,
         backgroundColor: bg,
         flexDirection: 'row',
         alignItems: 'center',
@@ -173,6 +175,10 @@ function PillChip({
  * as a bold heading, and a short hint.
  */
 function StepLabel({ n, label, hint }: { n: number; label: string; hint?: string }) {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 14, marginBottom: 14 }}>
       <View
@@ -191,7 +197,9 @@ function StepLabel({ n, label, hint }: { n: number; label: string; hint?: string
         </RNText>
       </View>
       <View style={{ flex: 1 }}>
-        <RNText style={{ fontFamily: 'InterTight_600SemiBold', fontSize: 14, color: '#666' }}>
+        <RNText
+          style={{ fontFamily: 'InterTight_600SemiBold', fontSize: 14, color: colors.textMuted }}
+        >
           Step {n}
         </RNText>
         <RNText
@@ -209,7 +217,7 @@ function StepLabel({ n, label, hint }: { n: number; label: string; hint?: string
             style={{
               fontFamily: 'InterTight_400Regular',
               fontSize: 15,
-              color: '#666',
+              color: colors.textMuted,
               marginTop: 1,
             }}
           >
@@ -222,6 +230,10 @@ function StepLabel({ n, label, hint }: { n: number; label: string; hint?: string
 }
 
 export function ItemForm({ kind, mode, initial, submitting, error, onSubmit }: ItemFormProps) {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   const isHave = kind === 'listing';
   const categories = useCategories();
   const [photos, setPhotos] = useState<string[]>([]);

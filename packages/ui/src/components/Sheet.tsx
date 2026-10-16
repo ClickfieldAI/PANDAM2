@@ -18,7 +18,8 @@ import Animated, {
 
 import { nearestOf2, project, rubberband } from '../motion/physics';
 import { useMotionOK } from '../motion/useMotionOK';
-import { colors, radii, shadows, springs, spacing } from '../tokens';
+import { useThemeColors } from '../theme';
+import { radii, shadows, springs, spacing } from '../tokens';
 
 import { Text } from './Text';
 
@@ -74,6 +75,8 @@ export function Sheet({
   children,
   bottomInset = 0,
 }: SheetProps) {
+  const colors = useThemeColors();
+
   const motionOK = useMotionOK();
   const [shown, setShown] = useState(visible);
   const heightRef = useRef(FALLBACK_HEIGHT);

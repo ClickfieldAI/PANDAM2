@@ -10,10 +10,10 @@ import {
   SkeletonList,
   Stack,
   Text,
-  colors,
   layout,
   radii,
   spacing,
+  useThemeColors,
 } from '@pandam/ui';
 
 import { MatchMoment } from '@/components/brand/MatchMoment';
@@ -44,6 +44,8 @@ function TradeLeg({
   mirrors: string;
   onPress: () => void;
 }) {
+  const colors = useThemeColors();
+
   const give = direction === 'give';
   const tint = give ? colors.accent : colors.need;
   const soft = give ? colors.accentSoft : colors.needSoft;
@@ -111,6 +113,8 @@ function TradeLeg({
 }
 
 export default function MatchDetailScreen() {
+  const colors = useThemeColors();
+
   const { key } = useLocalSearchParams<{ key: string }>();
   const router = useRouter();
   const matches = demoQuery(useMatches(), demoMatches);

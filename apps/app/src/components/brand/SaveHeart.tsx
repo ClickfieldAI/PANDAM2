@@ -8,7 +8,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
-import { colors, haptic, useMotionOK } from '@pandam/ui';
+import { haptic, useMotionOK, useThemeColors } from '@pandam/ui';
 
 /**
  * A save heart that pops with a spring when tapped.
@@ -18,6 +18,8 @@ import { colors, haptic, useMotionOK } from '@pandam/ui';
  * tactile "keep this" gesture people expect from a marketplace.
  */
 export function SaveHeart({ size = 34 }: { size?: number }) {
+  const colors = useThemeColors();
+
   const [saved, setSaved] = useState(false);
   const motionOK = useMotionOK();
   const pop = useSharedValue(1);

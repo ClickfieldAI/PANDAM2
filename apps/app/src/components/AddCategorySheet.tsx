@@ -4,7 +4,17 @@ import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, Field, Notice, Row, Sheet, Stack, Text, colors, useToast } from '@pandam/ui';
+import {
+  Button,
+  Field,
+  Notice,
+  Row,
+  Sheet,
+  Stack,
+  Text,
+  useToast,
+  useThemeColors,
+} from '@pandam/ui';
 
 import { ApiError } from '@/lib/api/client';
 import { useCreateCategory } from '@/lib/hooks/useCategories';
@@ -41,6 +51,8 @@ export function AddCategorySheet({
   onCreated?: (c: Category) => void;
   onUseExisting?: (id: string) => void;
 }) {
+  const colors = useThemeColors();
+
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const create = useCreateCategory();

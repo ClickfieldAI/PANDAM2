@@ -7,6 +7,7 @@
  * for one-off layout.
  */
 export * from './tokens';
+export { ThemeProvider, useThemeColors, useResolvedScheme, type ResolvedScheme } from './theme';
 export { cx } from './cx';
 export { haptic, type HapticKind } from './haptics';
 

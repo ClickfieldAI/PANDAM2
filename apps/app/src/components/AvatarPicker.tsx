@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { ActivityIndicator, Alert, Platform, Pressable, View } from 'react-native';
 
-import { Avatar, colors, palette } from '@pandam/ui';
+import { Avatar, palette, useThemeColors } from '@pandam/ui';
 
 // No `allowsEditing` here: the native crop step is known to silently fail to
 // return a result in Expo Go (it needs a real dev/production build) — see
@@ -74,6 +74,8 @@ export function AvatarPicker({
   variant?: 'avatar' | 'add';
   onPicked: (uri: string) => void;
 }) {
+  const colors = useThemeColors();
+
   const choose = () => choosePhoto(onPicked, busy);
 
   if (variant === 'add') {
@@ -88,12 +90,12 @@ export function AvatarPicker({
           height: size,
           borderWidth: 1,
           borderRadius: 8,
-          borderColor: '#111111',
+          borderColor: colors.border,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Ionicons name="add" size={Math.round(size * 0.5)} color="#111111" />
+        <Ionicons name="add" size={Math.round(size * 0.5)} color={colors.textPrimary} />
       </Pressable>
     );
   }

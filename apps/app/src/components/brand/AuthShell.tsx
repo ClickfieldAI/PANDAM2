@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react';
 import { View, useWindowDimensions } from 'react-native';
 
-import { Reveal, Text, colors, radii, spacing } from '@pandam/ui';
+import { Reveal, Text, radii, spacing, useThemeColors } from '@pandam/ui';
 
 import { ProductComposition } from './ProductComposition';
 import { Wordmark } from './Wordmark';
@@ -28,6 +28,8 @@ export function AuthShell({
   subtitle: string;
   children: ReactNode;
 }) {
+  const colors = useThemeColors();
+
   const { width } = useWindowDimensions();
   const wide = width >= 900;
 

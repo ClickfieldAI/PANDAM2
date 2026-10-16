@@ -12,7 +12,9 @@ import { AccessibilityInfo, Animated, Easing, Platform, View } from 'react-nativ
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { haptic } from '../haptics';
-import { colors, layout, palette, radii, shadows, spacing, timings } from '../tokens';
+import { useThemeColors } from '../theme';
+import { layout, palette, radii, shadows, spacing, timings } from '../tokens';
+import { type ThemeColors } from '../tokens';
 
 import { Press } from './Press';
 import { Text } from './Text';
@@ -60,7 +62,9 @@ export function useToast(): ToastContextValue {
   return ctx;
 }
 
-const KIND: Record<ToastKind, { bg: string; border: string; glyph: string; fg: string }> = {
+const makeKIND = (
+  colors: ThemeColors,
+): Record<ToastKind, { bg: string; border: string; glyph: string; fg: string }> => ({
   // Dark surfaces, because a toast sits over content and needs to read as a
   // layer above the page rather than another card in it.
   success: {
@@ -76,13 +80,15 @@ const KIND: Record<ToastKind, { bg: string; border: string; glyph: string; fg: s
     glyph: 'i',
     fg: palette.concrete,
   },
-};
+});
 
 interface Live extends ToastOptions {
   id: number;
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const colors = useThemeColors();
+
   const [toast, setToast] = useState<Live | null>(null);
   const [reduceMotion, setReduceMotion] = useState(false);
   const insets = useSafeAreaInsets();
@@ -149,7 +155,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => () => (timer.current ? clearTimeout(timer.current) : undefined), []);
 
-  const spec = toast ? KIND[toast.kind ?? 'info'] : KIND.info;
+  const spec = toast ? makeKIND(colors)[toast.kind ?? 'info'] : makeKIND(colors).info;
 
   return (
     <ToastContext.Provider value={value}>

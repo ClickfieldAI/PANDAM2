@@ -3,7 +3,7 @@ import { type ComponentProps, useState } from 'react';
 import { Image, View } from 'react-native';
 
 import { type Category } from '@pandam/types';
-import { Chip, Press, Rail, Text, colors, radii, spacing } from '@pandam/ui';
+import { Chip, Press, Rail, Text, radii, spacing, useThemeColors } from '@pandam/ui';
 
 import { categoryImage } from '@/lib/homeAssets';
 import { categoryIcon } from '@/lib/icons';
@@ -32,6 +32,8 @@ export function CategoryFilter({
   tone = 'accent',
   onAdd,
 }: CategoryFilterProps) {
+  const colors = useThemeColors();
+
   return (
     <Rail gap="sm">
       <Chip label="All" selected={selectedId === null} tone={tone} onPress={() => onSelect(null)} />
@@ -87,6 +89,8 @@ const LABEL_LINE_HEIGHT = 15;
  * as an action rather than a category.
  */
 export function CategoryGrid({ categories, onSelect, limit, onAdd }: CategoryGridProps) {
+  const colors = useThemeColors();
+
   const [width, setWidth] = useState(0);
   const columns =
     width === 0 ? 4 : width < 260 ? 3 : Math.min(6, Math.max(3, Math.floor(width / 84)));
@@ -107,7 +111,7 @@ export function CategoryGrid({ categories, onSelect, limit, onAdd }: CategoryGri
     fontFamily: 'InterTight_500Medium',
     fontSize: 11.5,
     lineHeight: 14,
-    color: '#111111',
+    color: colors.textPrimary,
     textAlign: 'center' as const,
     paddingHorizontal: 2,
     paddingBottom: 7,
@@ -130,9 +134,9 @@ export function CategoryGrid({ categories, onSelect, limit, onAdd }: CategoryGri
                 onPress={() => onSelect(c.id)}
                 style={{
                   ...frame,
-                  backgroundColor: '#FFFFFF',
+                  backgroundColor: colors.surface,
                   borderWidth: 1,
-                  borderColor: '#E9E6DF',
+                  borderColor: colors.borderSoft,
                 }}
               >
                 <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -144,10 +148,10 @@ export function CategoryGrid({ categories, onSelect, limit, onAdd }: CategoryGri
                       style={{ width: '100%', height: '100%' }}
                     />
                   ) : (
-                    <Ionicons name={categoryIcon(c.slug)} size={26} color="#111111" />
+                    <Ionicons name={categoryIcon(c.slug)} size={26} color={colors.textPrimary} />
                   )}
                 </View>
-                <View style={{ backgroundColor: '#FFFFFF', paddingTop: 6 }}>
+                <View style={{ backgroundColor: colors.surface, paddingTop: 6 }}>
                   <Text numberOfLines={1} style={labelStyle}>
                     {c.name}
                   </Text>
@@ -214,6 +218,8 @@ export function CategoryRail({
   tone = 'accent',
   onAdd,
 }: CategoryRailProps) {
+  const colors = useThemeColors();
+
   const fill = tone === 'need' ? colors.need : colors.accent;
   const text = tone === 'need' ? colors.needText : colors.accentText;
 

@@ -16,13 +16,13 @@ import Animated, {
 import {
   Press,
   Text,
-  colors,
   palette,
   radii,
   shadows,
   spacing,
   useMotionOK,
   ALLOW_3D,
+  useThemeColors,
 } from '@pandam/ui';
 
 import { OrganicShape } from './OrganicShape';
@@ -30,6 +30,8 @@ import { PhotoObject } from './PhotoObject';
 
 /** One travelling spark of terracotta "energy" between the two objects. */
 function Spark({ t, delay, span }: { t: SharedValue<number>; delay: number; span: number }) {
+  const colors = useThemeColors();
+
   const style = useAnimatedStyle(() => {
     const p = Math.max(0, Math.min(1, (t.value - delay) / 0.6));
     return {
@@ -77,6 +79,8 @@ function Side({
   charge: SharedValue<number>;
   onPress: () => void;
 }) {
+  const colors = useThemeColors();
+
   const have = kind === 'have';
   const dir = have ? 1 : -1;
   const objStyle = useAnimatedStyle(() => ({
@@ -165,6 +169,8 @@ export function ExchangeHero({
   onHave: () => void;
   onNeed: () => void;
 }) {
+  const colors = useThemeColors();
+
   const motionOK = useMotionOK();
   const charge = useSharedValue(0);
   const spark = useSharedValue(0);
@@ -215,13 +221,13 @@ export function ExchangeHero({
     >
       <OrganicShape
         size={260}
-        color={palette.orange50}
+        color={colors.accentSoft}
         rotate={-18}
         style={{ left: -60, top: -40 }}
       />
       <OrganicShape
         size={220}
-        color={palette.concreteSoft}
+        color={colors.surfaceMuted}
         rotate={30}
         style={{ right: -50, bottom: -30 }}
       />

@@ -14,7 +14,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Text, colors, palette, radii, spacing, useMotionOK, ALLOW_3D } from '@pandam/ui';
+import { Text, palette, radii, spacing, useMotionOK, ALLOW_3D, useThemeColors } from '@pandam/ui';
 
 import { brandImages, type BrandImageKey } from './imagery';
 import { OrganicShape } from './OrganicShape';
@@ -145,6 +145,8 @@ function Layer({
   py: SharedValue<number>;
   motionOK: boolean;
 }) {
+  const colors = useThemeColors();
+
   const enter = useSharedValue(motionOK ? 0 : 1);
   const float = useSharedValue(0);
 
@@ -252,6 +254,8 @@ function Layer({
 
 /** The exchange token that sits between HAVE and NEED — rotates and pulses. */
 function ExchangeToken({ motionOK, size = 52 }: { motionOK: boolean; size?: number }) {
+  const colors = useThemeColors();
+
   const spin = useSharedValue(0);
   const pulse = useSharedValue(0);
   useEffect(() => {
@@ -413,6 +417,7 @@ function ScaledScene({
   exchange: boolean;
   children?: ReactNode;
 }) {
+  const colors = useThemeColors();
   const [w, setW] = useState(1);
   const box = { w, h: height };
   const specs = layout === 'scatter' ? scatterSpecs(w, height) : LAYOUTS[layout];
@@ -422,13 +427,13 @@ function ScaledScene({
       {/* Background shapes — warm pebbles and a thin ring, far behind. */}
       <OrganicShape
         size={Math.min(w, height) * 0.82}
-        color={palette.orange50}
+        color={colors.accentSoft}
         rotate={-12}
         style={{ left: w * 0.08, top: height * 0.06 }}
       />
       <OrganicShape
         size={Math.min(w, height) * 0.46}
-        color={palette.concreteSoft}
+        color={colors.surfaceMuted}
         rotate={24}
         drift={12}
         style={{ right: w * 0.02, bottom: height * 0.02 }}

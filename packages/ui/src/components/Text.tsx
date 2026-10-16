@@ -1,6 +1,8 @@
 import { Platform, Text as RNText, type TextProps as RNTextProps } from 'react-native';
 
-import { colors, typography, type TypographyVariant } from '../tokens';
+import { useThemeColors } from '../theme';
+import { typography, type TypographyVariant } from '../tokens';
+import { type ThemeColors } from '../tokens';
 
 type Tone =
   | 'primary'
@@ -25,7 +27,7 @@ type Tone =
  * text uses the dark one; that distinction is why coloured copy in this
  * product stays readable.
  */
-const TONE_COLOR: Record<Tone, string> = {
+const makeTONE_COLOR = (colors: ThemeColors): Record<Tone, string> => ({
   primary: colors.textPrimary,
   secondary: colors.textSecondary,
   muted: colors.textMuted,
@@ -37,7 +39,7 @@ const TONE_COLOR: Record<Tone, string> = {
   danger: colors.dangerText,
   success: colors.successText,
   warning: colors.warningText,
-};
+});
 
 export interface TextProps extends RNTextProps {
   variant?: TypographyVariant;
@@ -69,11 +71,13 @@ export function Text({
   children,
   ...rest
 }: TextProps) {
+  const colors = useThemeColors();
+
   return (
     <RNText
       style={[
         typography[variant],
-        { color: TONE_COLOR[tone] },
+        { color: makeTONE_COLOR(colors)[tone] },
         caps && { textTransform: 'uppercase' },
         center && { textAlign: 'center' },
         numeric && { fontVariant: ['tabular-nums'] },

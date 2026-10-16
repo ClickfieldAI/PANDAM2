@@ -1,7 +1,8 @@
 import { Children, type ReactNode } from 'react';
 import { View } from 'react-native';
 
-import { colors, radii, spacing } from '../tokens';
+import { useThemeColors } from '../theme';
+import { radii, spacing } from '../tokens';
 
 import { Text } from './Text';
 
@@ -24,6 +25,8 @@ export interface MetaProps {
  * `{city && <Text>…}` inline without ending up with a dangling separator.
  */
 export function Meta({ children, wrap = false }: MetaProps) {
+  const colors = useThemeColors();
+
   const items = Children.toArray(children).filter(Boolean);
 
   return (

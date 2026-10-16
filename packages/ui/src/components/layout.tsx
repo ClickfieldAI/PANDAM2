@@ -1,7 +1,8 @@
 import { type ReactNode } from 'react';
 import { type StyleProp, View, type ViewStyle } from 'react-native';
 
-import { colors, spacing, type SpacingToken } from '../tokens';
+import { useThemeColors } from '../theme';
+import { spacing, type SpacingToken } from '../tokens';
 
 type Gap = SpacingToken | number;
 const g = (v: Gap | undefined) => (typeof v === 'number' ? v : v ? spacing[v] : undefined);
@@ -50,6 +51,8 @@ export interface DividerProps {
 }
 
 export function Divider({ tone = 'default', inset = 0, style }: DividerProps) {
+  const colors = useThemeColors();
+
   return (
     <View
       style={[

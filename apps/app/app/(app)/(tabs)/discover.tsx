@@ -10,10 +10,10 @@ import {
   Screen,
   SkeletonGrid,
   Text,
-  colors,
   layout,
   radii,
   spacing,
+  useThemeColors,
 } from '@pandam/ui';
 
 import { AddCategorySheet } from '@/components/AddCategorySheet';
@@ -37,6 +37,8 @@ import { useDebounced } from '@/lib/hooks/useDebounced';
 import { useDiscover, useListingCities } from '@/lib/hooks/useMarket';
 
 export default function DiscoverScreen() {
+  const colors = useThemeColors();
+
   const router = useRouter();
   const params = useLocalSearchParams<{ category?: string; owner?: string; city?: string }>();
   const [kind, setKind] = useState<MarketKind>('listing');
@@ -129,7 +131,12 @@ export default function DiscoverScreen() {
           {[0, 1, 2, 3, 4].map((i) => (
             <View
               key={i}
-              style={{ width: 56, height: 56, borderRadius: radii.lg, backgroundColor: '#EDEBE6' }}
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: radii.lg,
+                backgroundColor: colors.surfaceMuted,
+              }}
             />
           ))}
         </Row>

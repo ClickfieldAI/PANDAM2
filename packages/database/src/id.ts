@@ -32,6 +32,7 @@ export const ID_PREFIXES = {
   report: 'rpt',
   dispute: 'dsp',
   payment: 'pay',
+  demoFeeTransaction: 'dft',
   itemView: 'vew',
 } as const;
 

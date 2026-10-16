@@ -14,7 +14,8 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { type HapticKind, haptic } from '../haptics';
-import { colors, shadows, timings } from '../tokens';
+import { useThemeColors } from '../theme';
+import { shadows, timings } from '../tokens';
 
 /** What the caller can paint differently per interaction state. */
 export interface PressStateStyles {
@@ -105,6 +106,8 @@ export function Press({
   onPress,
   ...rest
 }: PressProps) {
+  const colors = useThemeColors();
+
   const [pressed, setPressed] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);

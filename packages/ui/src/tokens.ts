@@ -72,7 +72,7 @@ export const palette = {
 /* Semantic colours                                                           */
 /* -------------------------------------------------------------------------- */
 
-export const colors = {
+export const lightColors = {
   /** App background. */
   background: palette.offWhite,
   /** Secondary background — elevated section fills, alternating rows. */
@@ -158,6 +158,83 @@ export const colors = {
   /** Scrim behind a modal or sheet. */
   scrim: 'rgba(5, 5, 5, 0.5)',
 } as const;
+
+/** Every semantic colour, as plain strings — the shape both themes share. */
+export type ThemeColors = Record<keyof typeof lightColors, string>;
+
+/**
+ * Dark theme — the same application in its dark form, not a different design.
+ * Near-black ground, charcoal surfaces, light text, subtle dark-grey rules;
+ * the orange accent is unchanged. `need`/`surfaceInverse` (white-text fills
+ * in light mode) become lifted charcoal so they stay visible on the ground.
+ */
+export const darkColors: ThemeColors = {
+  background: '#0F0F10',
+  backgroundSecondary: '#18181A',
+  surface: '#1B1B1E',
+  surfaceMuted: '#252528',
+  surfaceHover: '#2E2E32',
+  surfaceInverse: '#2A2A2E',
+
+  border: '#3A3A40',
+  borderSoft: '#2A2A2E',
+  borderStrong: '#F5F3EE',
+
+  textPrimary: '#F5F3EE',
+  textSecondary: '#D4D2CC',
+  textMuted: '#A7A5A0',
+  textFaint: '#5A5A60',
+  textInverse: '#FCFBF8',
+
+  accent: palette.orange500,
+  accentStrong: palette.orange600,
+  accentBright: palette.orange400,
+  accentSoft: '#3A1D15',
+  accentBorder: palette.orange500,
+  accentText: '#FF8C72',
+
+  need: '#2F2F34',
+  needStrong: '#3A3A40',
+  needBright: '#46464D',
+  needSoft: '#252528',
+  needBorder: '#4A4A52',
+  needText: '#F5F3EE',
+
+  match: palette.orange500,
+  matchStrong: '#FF6A4D',
+  matchBright: palette.orange400,
+  matchSoft: '#3A1D15',
+  matchBorder: palette.orange500,
+  matchText: '#FF8C72',
+
+  success: '#4CA85C',
+  successSoft: '#15281A',
+  successText: '#7BCB8A',
+  warning: '#D69A2D',
+  warningSoft: '#2F2410',
+  warningText: '#E8B455',
+  danger: '#E5584E',
+  dangerStrong: '#C9423A',
+  dangerSoft: '#341A18',
+  dangerText: '#FF8F86',
+  info: '#5C95B5',
+  infoSoft: '#16252E',
+  infoText: '#86B8D4',
+  infoBorder: '#2C4452',
+  warningBorder: '#52411F',
+  dangerBorder: '#5A2B27',
+  surfacePressed: '#2E2E32',
+
+  focus: palette.orange500,
+  scrim: 'rgba(0, 0, 0, 0.65)',
+};
+
+/**
+ * The LIGHT theme, as a plain value. Components must not read this directly —
+ * they call `useThemeColors()` so they re-render when the theme changes. It
+ * stays exported for the Tailwind config and non-React callers only.
+ */
+export const colors: ThemeColors = lightColors;
 
 /* -------------------------------------------------------------------------- */
 /* Gradients                                                                  */

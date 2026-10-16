@@ -14,10 +14,10 @@ import {
   Press,
   Row,
   Text,
-  colors,
   radii,
   shadows,
   spacing,
+  useThemeColors,
 } from '@pandam/ui';
 
 import { SaveHeart } from '@/components/brand/SaveHeart';
@@ -44,6 +44,8 @@ export interface ItemCardProps {
  * shape at thumbnail size — the single most important fact about any item.
  */
 function KindMark({ isHave, onPhoto = false }: { isHave: boolean; onPhoto?: boolean }) {
+  const colors = useThemeColors();
+
   const color = isHave ? colors.accent : colors.need;
 
   if (onPhoto) {
@@ -92,6 +94,8 @@ function KindMark({ isHave, onPhoto = false }: { isHave: boolean; onPhoto?: bool
  * card is the tap target, so this never nests a second pressable.
  */
 function TradePill({ isHave, compact = false }: { isHave: boolean; compact?: boolean }) {
+  const colors = useThemeColors();
+
   const color = isHave ? colors.accent : colors.need;
   return (
     <View
@@ -125,6 +129,8 @@ function TradePill({ isHave, compact = false }: { isHave: boolean; compact?: boo
 
 /** A dot separator for dense metadata rows. */
 function Dot() {
+  const colors = useThemeColors();
+
   return (
     <View style={{ width: 2.5, height: 2.5, borderRadius: 2, backgroundColor: colors.textFaint }} />
   );
@@ -146,6 +152,8 @@ export function ItemCard({
   showStatus = false,
   variant = 'list',
 }: ItemCardProps) {
+  const colors = useThemeColors();
+
   const isHave = item.kind === 'listing';
   const icon = categoryIcon(item.category.slug);
   const cover = primaryImage(item.images);

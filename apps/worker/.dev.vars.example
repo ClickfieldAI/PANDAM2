@@ -45,3 +45,8 @@ GOOGLE_OAUTH_CLIENT_IDS=
 # APPLE_OAUTH_AUDIENCES: comma-separated — your iOS bundle id, plus a
 # Services ID if you also want Apple sign-in on web.
 APPLE_OAUTH_AUDIENCES=
+
+# Platform-fee DEMO tiers (optional). JSON array, amounts in paise, contiguous
+# from 1 with an unbounded last tier. Unset = built-in SAMPLE tiers (NOT approved
+# commercial rates). Example:
+# PLATFORM_FEE_TIERS=[{"label":"Up to ₹500","minAmount":1,"maxAmount":50000,"feeAmount":500,"enabled":true},{"label":"Above ₹500","minAmount":50001,"maxAmount":null,"feeAmount":2000,"enabled":true}]

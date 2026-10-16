@@ -1,7 +1,9 @@
 import { type ReactNode } from 'react';
 import { ActivityIndicator, type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 
-import { colors, radii, shadows, spacing, type typography } from '../tokens';
+import { useThemeColors } from '../theme';
+import { radii, shadows, spacing, type typography } from '../tokens';
+import { type ThemeColors } from '../tokens';
 
 import { Press, type PressProps } from './Press';
 import { Text } from './Text';
@@ -67,7 +69,7 @@ interface Spec {
  * shape read as a deliberate object, not a soft default control. `match`
  * keeps a (now very restrained) lift as the one surface allowed spectacle.
  */
-const SPEC: Record<Variant, Spec> = {
+const makeSPEC = (colors: ThemeColors): Record<Variant, Spec> => ({
   primary: {
     bg: colors.accent,
     bgHover: colors.accentStrong,
@@ -133,7 +135,7 @@ const SPEC: Record<Variant, Spec> = {
     fg: colors.accentText,
     border: colors.border,
   },
-};
+});
 
 /**
  * Sizes.
@@ -162,8 +164,10 @@ export function Button({
   style,
   ...rest
 }: ButtonProps) {
+  const colors = useThemeColors();
+
   const pad = PAD[size];
-  const spec = SPEC[variant];
+  const spec = makeSPEC(colors)[variant];
   const isDisabled = disabled || loading;
 
   return (

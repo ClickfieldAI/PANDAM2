@@ -1,6 +1,6 @@
 import { Redirect, Stack } from 'expo-router';
 
-import { colors } from '@pandam/ui';
+import { useThemeColors } from '@pandam/ui';
 
 import { Splash, useHoldSplash } from '@/components/Splash';
 import { useSession } from '@/lib/auth/hooks';
@@ -11,6 +11,8 @@ import { useSession } from '@/lib/auth/hooks';
  * any signed-in user whose identity is not yet verified.
  */
 export default function OnboardingLayout() {
+  const colors = useThemeColors();
+
   const { isResolving, isAuthenticated } = useSession();
   const showSplash = useHoldSplash(isResolving);
   if (showSplash) return <Splash />;

@@ -13,7 +13,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { ambient, colors, shadows, springs } from '../tokens';
+import { useThemeColors } from '../theme';
+import { ambient, shadows, springs } from '../tokens';
+import { type ThemeColors } from '../tokens';
 
 import { ALLOW_3D } from './allow3d';
 import { useMotionOK } from './useMotionOK';
@@ -36,6 +38,8 @@ export interface ConnectingPairProps {
  * Under reduced motion the pair simply renders at rest.
  */
 export function ConnectingPair({ left, right, link, size = 96, style }: ConnectingPairProps) {
+  const colors = useThemeColors();
+
   const motionOK = useMotionOK();
   const enter = useSharedValue(motionOK ? 0 : 1);
   const pulse = useSharedValue(0);
@@ -89,49 +93,54 @@ export function ConnectingPair({ left, right, link, size = 96, style }: Connecti
   const tile = { width: size, height: size, borderRadius: size * 0.22 };
 
   return (
-    <View style={[styles.row, style]}>
-      <Animated.View style={[styles.tile, tile, shadows.md, leftStyle]}>{left}</Animated.View>
-      <View style={styles.linkWrap}>
-        <Animated.View style={[styles.halo, haloStyle]} />
-        <Animated.View style={[styles.link, linkStyle]}>{link}</Animated.View>
+    <View style={[makeStyles(colors).row, style]}>
+      <Animated.View style={[makeStyles(colors).tile, tile, shadows.md, leftStyle]}>
+        {left}
+      </Animated.View>
+      <View style={makeStyles(colors).linkWrap}>
+        <Animated.View style={[makeStyles(colors).halo, haloStyle]} />
+        <Animated.View style={[makeStyles(colors).link, linkStyle]}>{link}</Animated.View>
       </View>
-      <Animated.View style={[styles.tile, tile, shadows.md, rightStyle]}>{right}</Animated.View>
+      <Animated.View style={[makeStyles(colors).tile, tile, shadows.md, rightStyle]}>
+        {right}
+      </Animated.View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  tile: {
-    overflow: 'hidden',
-    backgroundColor: colors.surface,
-    borderWidth: 3,
-    borderColor: colors.surface,
-  },
-  linkWrap: {
-    width: 44,
-    height: 44,
-    marginHorizontal: -10,
-    zIndex: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  halo: {
-    position: 'absolute',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.matchBright,
-  },
-  link: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.match,
-    borderWidth: 3,
-    borderColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.sm,
-  },
-});
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+    tile: {
+      overflow: 'hidden',
+      backgroundColor: colors.surface,
+      borderWidth: 3,
+      borderColor: colors.surface,
+    },
+    linkWrap: {
+      width: 44,
+      height: 44,
+      marginHorizontal: -10,
+      zIndex: 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    halo: {
+      position: 'absolute',
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.matchBright,
+    },
+    link: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.match,
+      borderWidth: 3,
+      borderColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...shadows.sm,
+    },
+  });

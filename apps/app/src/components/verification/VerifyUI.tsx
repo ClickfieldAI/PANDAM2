@@ -23,7 +23,8 @@ import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
 
 import { Press, useMotionOK } from '@pandam/ui';
 
-import { M } from '@/components/matches/MatchesUI';
+import { useM } from '@/components/matches/MatchesUI';
+import { useThemeColors } from '@pandam/ui';
 
 export const PAD = 22;
 const TITLE = 'InterTight_900Black';
@@ -49,7 +50,7 @@ export function RedShape({
   kind,
   width,
   height,
-  color = M.red,
+  color = '#FF3B2F',
   style,
 }: {
   kind: BlobKind;
@@ -58,6 +59,8 @@ export function RedShape({
   color?: string;
   style?: object;
 }) {
+  const M = useM();
+
   const vb = kind === 'wave' ? '0 0 210 140' : kind === 'tall' ? '0 0 134 140' : '0 0 150 150';
   return (
     <View pointerEvents="none" style={[{ position: 'absolute' }, style]}>
@@ -142,6 +145,8 @@ export function VerifyShell({
   /** Vertically centre the content (the status screens). */
   center?: boolean;
 }) {
+  const M = useM();
+
   const insets = useSafeAreaInsets();
   return (
     <View style={{ flex: 1, backgroundColor: M.bg }}>
@@ -177,6 +182,8 @@ export function VerifyShell({
 }
 
 export function PageTitle({ children, size = 42 }: { children: string; size?: number }) {
+  const M = useM();
+
   return (
     <Text
       accessibilityRole="header"
@@ -195,10 +202,18 @@ export function PageTitle({ children, size = 42 }: { children: string; size?: nu
 }
 
 export function Lead({ children, style }: { children: ReactNode; style?: object }) {
+  const colors = useThemeColors();
+
   return (
     <Text
       style={[
-        { fontFamily: REG, fontSize: 15.5, lineHeight: 22, color: '#444444', marginTop: 14 },
+        {
+          fontFamily: REG,
+          fontSize: 15.5,
+          lineHeight: 22,
+          color: colors.textSecondary,
+          marginTop: 14,
+        },
         style,
       ]}
     >
@@ -209,6 +224,8 @@ export function Lead({ children, style }: { children: ReactNode; style?: object 
 
 /** Pale-pink rounded square holding a red line icon. */
 export function IconTile({ name }: { name: IconName }) {
+  const M = useM();
+
   return (
     <View
       style={{
@@ -243,6 +260,8 @@ export function RedRow({
   children: string;
   bold?: boolean;
 }) {
+  const M = useM();
+
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
       <View style={{ width: 26, alignItems: 'center' }}>
@@ -260,6 +279,8 @@ export function RedRow({
 
 /** Rounded, thin-bordered note with a lock. */
 export function NoteBox({ children }: { children: string }) {
+  const colors = useThemeColors();
+
   return (
     <View
       style={{
@@ -268,14 +289,22 @@ export function NoteBox({ children }: { children: string }) {
         gap: 12,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: '#C9C7C2',
-        backgroundColor: '#EDEBE6',
+        borderColor: colors.borderSoft,
+        backgroundColor: colors.surfaceMuted,
         paddingHorizontal: 14,
         paddingVertical: 12,
       }}
     >
-      <Ionicons name="lock-closed" size={19} color="#5A5A5A" />
-      <Text style={{ flex: 1, fontFamily: REG, fontSize: 13.5, lineHeight: 19, color: '#555555' }}>
+      <Ionicons name="lock-closed" size={19} color={colors.textMuted} />
+      <Text
+        style={{
+          flex: 1,
+          fontFamily: REG,
+          fontSize: 13.5,
+          lineHeight: 19,
+          color: colors.textSecondary,
+        }}
+      >
         {children}
       </Text>
     </View>
@@ -284,12 +313,14 @@ export function NoteBox({ children }: { children: string }) {
 
 /** Bordered panel with a small heading (authorization). */
 export function InfoPanel({ title, children }: { title: string; children: ReactNode }) {
+  const M = useM();
+
   return (
     <View
       style={{
         borderRadius: 14,
         borderWidth: 1.4,
-        borderColor: M.ink,
+        borderColor: M.line,
         backgroundColor: M.bg,
         padding: 16,
         gap: 14,
@@ -315,6 +346,8 @@ export function WideCta({
   disabled?: boolean;
   loading?: boolean;
 }) {
+  const M = useM();
+
   return (
     <Press
       haptic="light"
@@ -355,6 +388,8 @@ export function WideCta({
 }
 
 export function TextAction({ label, onPress }: { label: string; onPress: () => void }) {
+  const M = useM();
+
   return (
     <Press
       haptic="light"
@@ -373,6 +408,8 @@ export function TextAction({ label, onPress }: { label: string; onPress: () => v
 /* ------------------------------ status pieces ------------------------------ */
 
 export function SuccessBadge({ shield = false, size = 132 }: { shield?: boolean; size?: number }) {
+  const M = useM();
+
   return (
     <View
       style={{
@@ -395,6 +432,8 @@ export function SuccessBadge({ shield = false, size = 132 }: { shield?: boolean;
 }
 
 export function CenterTitle({ children, size = 36 }: { children: string; size?: number }) {
+  const M = useM();
+
   return (
     <Text
       accessibilityRole="header"
@@ -414,9 +453,17 @@ export function CenterTitle({ children, size = 36 }: { children: string; size?: 
 }
 
 export function CenterBody({ children }: { children: string }) {
+  const colors = useThemeColors();
+
   return (
     <Text
-      style={{ fontFamily: REG, fontSize: 15, lineHeight: 21, color: '#444', textAlign: 'center' }}
+      style={{
+        fontFamily: REG,
+        fontSize: 15,
+        lineHeight: 21,
+        color: colors.textSecondary,
+        textAlign: 'center',
+      }}
     >
       {children}
     </Text>
@@ -425,6 +472,8 @@ export function CenterBody({ children }: { children: string }) {
 
 /** Eight-spoke spinner inside a pale-pink disc. */
 export function SpinnerDisc() {
+  const M = useM();
+
   const motionOK = useMotionOK();
   const turn = useSharedValue(0);
   useEffect(() => {
@@ -482,6 +531,8 @@ export function ProgressSteps({
   identityDone: boolean;
   completeDone: boolean;
 }) {
+  const M = useM();
+
   const state = (done: boolean, prevDone: boolean) =>
     done ? 'done' : prevDone ? 'current' : 'upcoming';
   const steps = [
@@ -505,7 +556,7 @@ export function ProgressSteps({
                 borderRadius: 13,
                 backgroundColor: filled ? M.red : 'transparent',
                 borderWidth: filled ? 0 : 1.6,
-                borderColor: M.ink,
+                borderColor: M.line,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
@@ -523,7 +574,7 @@ export function ProgressSteps({
               style={{
                 fontFamily: SEMI,
                 fontSize: 13.5,
-                color: filled ? M.red : '#555',
+                color: filled ? M.red : M.secondary,
                 marginLeft: 7,
               }}
             >
@@ -549,6 +600,10 @@ export function ProgressSteps({
 
 /** One summary row: red check, dark label, right-aligned red status. */
 export function SummaryRow({ label, status, ok }: { label: string; status: string; ok: boolean }) {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 9 }}>
       <View
@@ -558,7 +613,7 @@ export function SummaryRow({ label, status, ok }: { label: string; status: strin
           borderRadius: 13,
           backgroundColor: ok ? M.red : 'transparent',
           borderWidth: ok ? 0 : 1.5,
-          borderColor: '#B9B7B2',
+          borderColor: colors.borderSoft,
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -568,7 +623,9 @@ export function SummaryRow({ label, status, ok }: { label: string; status: strin
       <Text style={{ flex: 1, fontFamily: SEMI, fontSize: 16, color: M.ink, marginLeft: 14 }}>
         {label}
       </Text>
-      <Text style={{ fontFamily: BOLD, fontSize: 15.5, color: ok ? M.red : '#777' }}>{status}</Text>
+      <Text style={{ fontFamily: BOLD, fontSize: 15.5, color: ok ? M.red : M.secondary }}>
+        {status}
+      </Text>
     </View>
   );
 }

@@ -1,7 +1,8 @@
 import { type ReactNode, forwardRef, useCallback, useState } from 'react';
 import { Platform, Pressable, TextInput, type TextInputProps, View } from 'react-native';
 
-import { colors, radii, spacing, timings, typography } from '../tokens';
+import { useThemeColors } from '../theme';
+import { radii, spacing, timings, typography } from '../tokens';
 
 import { Text } from './Text';
 
@@ -17,6 +18,8 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
   { invalid, leftIcon, rightIcon, style, onFocus, onBlur, multiline, ...rest },
   ref,
 ) {
+  const colors = useThemeColors();
+
   const [focused, setFocused] = useState(false);
   const [hovered, setHovered] = useState(false);
 
@@ -225,6 +228,8 @@ export const SearchInput = forwardRef<TextInput, SearchInputProps>(function Sear
   { icon, onClear, clearIcon, style, value, onFocus, onBlur, ...rest },
   ref,
 ) {
+  const colors = useThemeColors();
+
   const [focused, setFocused] = useState(false);
   return (
     <View

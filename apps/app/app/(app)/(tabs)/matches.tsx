@@ -20,11 +20,11 @@ import {
   SkeletonList,
   Stack,
   Text,
-  colors,
   layout,
   spacing,
   useToast,
   haptic,
+  useThemeColors,
 } from '@pandam/ui';
 
 import {
@@ -116,6 +116,8 @@ function groupIncomingByListing(offers: OfferView[]): ListingGroup[] {
  * real Accept/Reject acting on that exact offer via the existing offers API.
  */
 function ReceivedListingGroup({ group }: { group: ListingGroup }) {
+  const colors = useThemeColors();
+
   const router = useRouter();
   const toast = useToast();
   const item = useItem(group.kind, group.itemId);
@@ -287,6 +289,8 @@ function ReceivedListingGroup({ group }: { group: ListingGroup }) {
 const VALID_TABS: Tab[] = ['reciprocal', 'received', 'sent'];
 
 export default function MatchesScreen() {
+  const colors = useThemeColors();
+
   const router = useRouter();
   // Entry points elsewhere (profile, messages/transactions empty states, a
   // need's "View offers") deep-link straight to the Received/Sent tab.

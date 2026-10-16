@@ -1,7 +1,8 @@
 import { type ReactNode } from 'react';
 import { type StyleProp, View, type ViewStyle } from 'react-native';
 
-import { colors, radii, spacing } from '../tokens';
+import { useThemeColors } from '../theme';
+import { radii, spacing } from '../tokens';
 
 import { Press } from './Press';
 import { Text } from './Text';
@@ -32,6 +33,8 @@ export function SectionHeader({
   onAction,
   icon,
 }: SectionHeaderProps) {
+  const colors = useThemeColors();
+
   return (
     <View
       style={{

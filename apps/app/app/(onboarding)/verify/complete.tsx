@@ -14,6 +14,7 @@ import {
   useScreen,
 } from '@/components/verification/VerifyUI';
 import { useSession } from '@/lib/auth/hooks';
+import { useThemeColors } from '@pandam/ui';
 
 /**
  * "Identity Verification Complete" — the last onboarding step before Home.
@@ -21,6 +22,8 @@ import { useSession } from '@/lib/auth/hooks';
  * session's own per-step status rather than a hard-coded "Verified".
  */
 export default function VerificationCompleteScreen() {
+  const colors = useThemeColors();
+
   const router = useRouter();
   const { user } = useSession();
   const { w } = useScreen();
@@ -58,8 +61,8 @@ export default function VerificationCompleteScreen() {
           marginTop: 18,
           borderRadius: 14,
           borderWidth: 1,
-          borderColor: '#CFCDC8',
-          backgroundColor: '#FBFAF7',
+          borderColor: colors.borderSoft,
+          backgroundColor: colors.surface,
           paddingHorizontal: 14,
           paddingVertical: 6,
         }}

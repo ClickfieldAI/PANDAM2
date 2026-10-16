@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { Image, Platform, View } from 'react-native';
 
-import { Button, Notice, Row, Stack, Text, colors, useToast } from '@pandam/ui';
+import { Button, Notice, Row, Stack, Text, useToast, useThemeColors } from '@pandam/ui';
 
 import { ApiError } from '@/lib/api/client';
 import { useOAuthLogin } from '@/lib/auth/hooks';
@@ -34,6 +34,8 @@ export function OAuthButtons({
   /** Height of the solid Google button. */
   height?: number;
 }) {
+  const colors = useThemeColors();
+
   const toast = useToast();
   const oauthLogin = useOAuthLogin();
   const [appleReady, setAppleReady] = useState(false);
@@ -89,9 +91,9 @@ export function OAuthButtons({
             variant={solid ? 'need' : 'secondary'}
             style={
               solid
-                ? { height, backgroundColor: '#111111', borderColor: '#111111' }
+                ? { height, backgroundColor: colors.need, borderColor: colors.border }
                 : outline
-                  ? { height, backgroundColor: '#FFFFFF', borderColor: '#111111' }
+                  ? { height, backgroundColor: colors.surface, borderColor: colors.border }
                   : undefined
             }
             size="lg"
@@ -163,14 +165,17 @@ export function OAuthButtons({
 }
 
 /** "or" divider between social sign-in and the email/password form. */
-export function OAuthDivider({ ruleColor = colors.border }: { ruleColor?: string }) {
+export function OAuthDivider({ ruleColor }: { ruleColor?: string }) {
+  const colors = useThemeColors();
+  const rule = ruleColor ?? colors.border;
+
   return (
     <Row gap="sm" align="center">
-      <View style={{ flex: 1, height: 1, backgroundColor: ruleColor }} />
+      <View style={{ flex: 1, height: 1, backgroundColor: rule }} />
       <Text variant="caption" tone="muted">
         or
       </Text>
-      <View style={{ flex: 1, height: 1, backgroundColor: ruleColor }} />
+      <View style={{ flex: 1, height: 1, backgroundColor: rule }} />
     </Row>
   );
 }

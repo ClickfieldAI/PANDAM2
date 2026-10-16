@@ -5,7 +5,7 @@ import { Alert, Platform, Text, View } from 'react-native';
 
 import { Press } from '@pandam/ui';
 
-import { M } from '@/components/matches/MatchesUI';
+import { useM } from '@/components/matches/MatchesUI';
 import { CornerDecor } from '@/components/profile/ProfileUI';
 import {
   Lead,
@@ -15,6 +15,7 @@ import {
   WideCta,
 } from '@/components/verification/VerifyUI';
 import { useLogout, useSession } from '@/lib/auth/hooks';
+import { useThemeColors } from '@pandam/ui';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -38,13 +39,17 @@ function StepCard({
   actionLabel: string;
   onPress: () => void;
 }) {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   return (
     <View
       style={{
         borderRadius: 12,
         borderWidth: 1.4,
-        borderColor: M.ink,
-        backgroundColor: '#FBFAF7',
+        borderColor: M.line,
+        backgroundColor: colors.surface,
         padding: 14,
         gap: 14,
       }}
@@ -81,7 +86,7 @@ function StepCard({
               fontFamily: 'InterTight_400Regular',
               fontSize: 15.5,
               lineHeight: 21,
-              color: '#444',
+              color: colors.textSecondary,
               marginTop: 2,
             }}
           >
@@ -97,7 +102,7 @@ function StepCard({
               style={{
                 fontFamily: 'InterTight_400Regular',
                 fontSize: 14,
-                color: '#555',
+                color: colors.textSecondary,
                 textAlign: 'center',
               }}
             >
@@ -116,6 +121,10 @@ function StepCard({
  * and in again) resumes exactly where the user stopped.
  */
 export default function VerifyIdentityScreen() {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   const router = useRouter();
   const { user } = useSession();
   const logout = useLogout();
@@ -192,7 +201,13 @@ export default function VerifyIdentityScreen() {
           marginTop: 26,
         }}
       >
-        <Text style={{ fontFamily: 'InterTight_400Regular', fontSize: 14.5, color: '#555' }}>
+        <Text
+          style={{
+            fontFamily: 'InterTight_400Regular',
+            fontSize: 14.5,
+            color: colors.textSecondary,
+          }}
+        >
           Signed in as {user?.email}.
         </Text>
         <Press

@@ -16,13 +16,13 @@ import {
   SkeletonList,
   Stack,
   Text,
-  colors,
   layout,
   radii,
   spacing,
   useToast,
   haptic,
   Press,
+  useThemeColors,
 } from '@pandam/ui';
 
 import { AppHeader } from '@/components/AppHeader';
@@ -50,6 +50,8 @@ const STATUS_LABEL: Record<BarterTransactionView['status'], string> = {
  * so people had to infer how much was left.
  */
 function Progress({ status }: { status: BarterTransactionView['status'] }) {
+  const colors = useThemeColors();
+
   const steps = ['Agreed', 'Under way', 'Done'] as const;
   const reached =
     status === 'completed' ? 2 : status === 'in_progress' ? 1 : status === 'created' ? 0 : -1;
@@ -106,6 +108,8 @@ function Progress({ status }: { status: BarterTransactionView['status'] }) {
 
 /** One side of the completed swap. */
 function Side({ label, title, tone }: { label: string; title: string; tone: 'have' | 'need' }) {
+  const colors = useThemeColors();
+
   const have = tone === 'have';
   return (
     <View
@@ -130,6 +134,8 @@ function Side({ label, title, tone }: { label: string; title: string; tone: 'hav
 }
 
 function StarPicker({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const colors = useThemeColors();
+
   return (
     <View
       accessibilityRole="radiogroup"
@@ -159,6 +165,8 @@ function StarPicker({ value, onChange }: { value: number; onChange: (n: number) 
 }
 
 export default function TransactionDetailScreen() {
+  const colors = useThemeColors();
+
   const router = useRouter();
   const toast = useToast();
   const { id } = useLocalSearchParams<{ id: string }>();

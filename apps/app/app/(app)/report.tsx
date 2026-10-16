@@ -22,11 +22,11 @@ import {
   Screen,
   Stack,
   Text,
-  colors,
   layout,
   radii,
   spacing,
   haptic,
+  useThemeColors,
 } from '@pandam/ui';
 
 import { AppHeader } from '@/components/AppHeader';
@@ -59,6 +59,8 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 export default function ReportScreen() {
+  const colors = useThemeColors();
+
   const router = useRouter();
   const params = useLocalSearchParams<{
     subjectType?: string;

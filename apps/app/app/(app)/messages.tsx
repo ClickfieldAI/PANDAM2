@@ -10,10 +10,10 @@ import {
   Screen,
   SkeletonList,
   Text,
-  colors,
   layout,
   radii,
   spacing,
+  useThemeColors,
 } from '@pandam/ui';
 
 import { demoConversations, demoMergeList } from '@/dummy';
@@ -25,6 +25,8 @@ import { timeAgo } from '@/lib/format';
 import { useConversations } from '@/lib/hooks/useConversations';
 
 export default function MessagesScreen() {
+  const colors = useThemeColors();
+
   const router = useRouter();
   const conversations = demoMergeList(useConversations(), demoConversations);
   const items = conversations.data ?? [];

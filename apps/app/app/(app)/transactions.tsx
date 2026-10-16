@@ -11,9 +11,9 @@ import {
   ListRow,
   Screen,
   SkeletonList,
-  colors,
   layout,
   spacing,
+  useThemeColors,
 } from '@pandam/ui';
 
 import { AppHeader } from '@/components/AppHeader';
@@ -50,6 +50,8 @@ const STATUS_LABEL: Record<BarterTransactionView['status'], string> = {
 };
 
 export default function TransactionsScreen() {
+  const colors = useThemeColors();
+
   const router = useRouter();
   const transactions = useTransactions();
   const items = transactions.data ?? [];

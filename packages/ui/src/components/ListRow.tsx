@@ -1,7 +1,9 @@
 import { type ReactNode } from 'react';
 import { type StyleProp, View, type ViewStyle } from 'react-native';
 
-import { colors, layout, radii, spacing } from '../tokens';
+import { useThemeColors } from '../theme';
+import { layout, radii, spacing } from '../tokens';
+import { type ThemeColors } from '../tokens';
 
 import { Press } from './Press';
 import { Text } from './Text';
@@ -52,6 +54,8 @@ export function ListRow({
   accessibilityLabel,
   style,
 }: ListRowProps) {
+  const colors = useThemeColors();
+
   const body = (
     <View
       style={[
@@ -137,7 +141,9 @@ export interface IconFrameProps {
   size?: number;
 }
 
-const FRAME: Record<NonNullable<IconFrameProps['tone']>, { bg: string; border: string }> = {
+const makeFRAME = (
+  colors: ThemeColors,
+): Record<NonNullable<IconFrameProps['tone']>, { bg: string; border: string }> => ({
   accent: { bg: colors.accentSoft, border: colors.accentBorder },
   need: { bg: colors.needSoft, border: colors.needBorder },
   match: { bg: colors.matchSoft, border: colors.matchBorder },
@@ -145,7 +151,7 @@ const FRAME: Record<NonNullable<IconFrameProps['tone']>, { bg: string; border: s
   danger: { bg: colors.dangerSoft, border: colors.dangerBorder },
   warning: { bg: colors.warningSoft, border: colors.warningBorder },
   info: { bg: colors.infoSoft, border: colors.infoBorder },
-};
+});
 
 /**
  * The rounded-square tint behind a row's icon.
@@ -155,7 +161,9 @@ const FRAME: Record<NonNullable<IconFrameProps['tone']>, { bg: string; border: s
  * border keeps the tint from dissolving into a white surface.
  */
 export function IconFrame({ children, tone = 'neutral', size = 38 }: IconFrameProps) {
-  const frame = FRAME[tone];
+  const colors = useThemeColors();
+
+  const frame = makeFRAME(colors)[tone];
   return (
     <View
       style={{

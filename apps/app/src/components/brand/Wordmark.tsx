@@ -10,7 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Text, colors, radii, useMotionOK } from '@pandam/ui';
+import { Text, radii, useMotionOK, useThemeColors } from '@pandam/ui';
 
 export const TAGLINE = 'Real things. New possibilities.';
 
@@ -33,6 +33,8 @@ export function Wordmark({
   reveal?: boolean;
   align?: 'left' | 'center';
 }) {
+  const colors = useThemeColors();
+
   const motionOK = useMotionOK();
   const animate = reveal && motionOK;
   const mark = useSharedValue(animate ? 0 : 1);
@@ -124,6 +126,8 @@ export function Wordmark({
 
 /** Small reusable pill that says what the brand does, used on auth. */
 export function BrandPill({ label }: { label: string }) {
+  const colors = useThemeColors();
+
   return (
     <View
       style={{

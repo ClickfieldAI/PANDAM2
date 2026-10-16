@@ -11,9 +11,9 @@ import {
   Screen,
   Stack,
   Text,
-  colors,
   radii,
   spacing,
+  useThemeColors,
 } from '@pandam/ui';
 
 import { AppHeader } from '@/components/AppHeader';
@@ -44,6 +44,8 @@ function BigChoice({
   examples: string[];
   onPress: () => void;
 }) {
+  const colors = useThemeColors();
+
   // "I NEED" deliberately stays structural (white/black), not a second brand
   // colour — only "I HAVE" gets the orange fill. See tokens.ts art direction.
   const isHave = edge === 'accent';
@@ -133,6 +135,8 @@ function BigChoice({
 }
 
 function Step({ n, title, body }: { n: number; title: string; body: string }) {
+  const colors = useThemeColors();
+
   return (
     <Row gap="md" align="flex-start">
       <View
@@ -162,6 +166,8 @@ function Step({ n, title, body }: { n: number; title: string; body: string }) {
 }
 
 export default function CreateScreen() {
+  const colors = useThemeColors();
+
   const router = useRouter();
 
   return (

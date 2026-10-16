@@ -451,3 +451,71 @@ export interface PaymentView {
   createdAt: number;
   updatedAt: number;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Platform fee — DEMO (simulated; never charges real money)                   */
+/* -------------------------------------------------------------------------- */
+
+/** One band of the fee schedule. Amounts are paise (minor units). */
+export interface FeeTier {
+  label: string;
+  /** Inclusive lower bound. */
+  minAmount: number;
+  /** Inclusive upper bound, or `null` for "no upper limit" (last tier only). */
+  maxAmount: number | null;
+  /** Fixed platform fee for this tier, deducted from the seller's proceeds. */
+  feeAmount: number;
+  /** When false the band still exists but charges no fee. */
+  enabled: boolean;
+}
+
+export interface FeeSchedule {
+  /** `sample` = built-in demo tiers; `env` = `PLATFORM_FEE_TIERS` override. */
+  source: 'sample' | 'env';
+  tiers: FeeTier[];
+  errors: string[];
+  valid: boolean;
+}
+
+/** `POST /api/v1/demo-fees/quote` — the authoritative fee breakdown. */
+export interface DemoFeeQuote {
+  demo: true;
+  currency: string;
+  amount: number;
+  feeAmount: number;
+  netAmount: number;
+  tierIndex: number;
+  tier: FeeTier;
+  listing: { id: string; title: string } | null;
+}
+
+export interface DemoFeeTransactionView {
+  id: string;
+  demo: true;
+  status: 'simulated_paid';
+  currency: string;
+  amount: number;
+  feeAmount: number;
+  netAmount: number;
+  tierLabel: string;
+  listing: { id: string | null; title: string | null };
+  createdAt: number;
+}
+
+export interface DemoSaleListing {
+  id: string;
+  title: string;
+  amount: number;
+  currency: string;
+}
+
+export interface DemoRevenueSummary {
+  demo: true;
+  currency: string;
+  count: number;
+  grossAmount: number;
+  feeAmount: number;
+  netAmount: number;
+  byTier: { tierLabel: string; count: number; feeAmount: number }[];
+  recent: DemoFeeTransactionView[];
+}

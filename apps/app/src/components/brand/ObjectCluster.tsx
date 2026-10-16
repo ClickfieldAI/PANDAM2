@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { View } from 'react-native';
 
-import { FloatingObject, colors, palette, shadows } from '@pandam/ui';
+import { FloatingObject, palette, shadows, useThemeColors } from '@pandam/ui';
 
 import { brandImages, type BrandImageKey } from './imagery';
 import { OrganicShape } from './OrganicShape';
@@ -21,9 +21,11 @@ export function ObjectCluster({
   right?: BrandImageKey;
   icon?: keyof typeof Ionicons.glyphMap;
 }) {
+  const colors = useThemeColors();
+
   return (
     <View style={{ width: 220, height: 150, alignItems: 'center', justifyContent: 'center' }}>
-      <OrganicShape size={190} color={palette.orange50} rotate={-8} style={{ top: 0 }} />
+      <OrganicShape size={190} color={colors.accentSoft} rotate={-8} style={{ top: 0 }} />
       <FloatingObject
         delay={0}
         amplitude={6}

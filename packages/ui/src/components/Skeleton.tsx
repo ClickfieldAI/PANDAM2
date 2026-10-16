@@ -9,7 +9,8 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { colors, radii, spacing } from '../tokens';
+import { useThemeColors } from '../theme';
+import { radii, spacing } from '../tokens';
 
 import { Gradient } from './Gradient';
 
@@ -40,6 +41,8 @@ export interface SkeletonProps {
  * still grey block communicates the same thing.
  */
 export function Skeleton({ width = '100%', height = 16, radius = radii.sm, style }: SkeletonProps) {
+  const colors = useThemeColors();
+
   // Lazy state, not a ref: the value is read during render, which the
   // react-hooks/refs rule forbids for refs.
   const [progress] = useState(() => new Animated.Value(0));
@@ -111,6 +114,8 @@ export function Skeleton({ width = '100%', height = 16, radius = radii.sm, style
 
 /** A skeleton shaped like a listing/need card. */
 export function SkeletonCard() {
+  const colors = useThemeColors();
+
   return (
     <View
       style={{

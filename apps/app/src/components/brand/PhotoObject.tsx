@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { useState } from 'react';
 import { type StyleProp, View, type ViewStyle } from 'react-native';
 
-import { Gradient, colors, coverFor, radii } from '@pandam/ui';
+import { Gradient, coverFor, radii, useThemeColors } from '@pandam/ui';
 
 export interface PhotoObjectProps {
   uri?: string | null;
@@ -22,6 +22,8 @@ export interface PhotoObjectProps {
  * slow or failed load never shows a grey box.
  */
 export function PhotoObject({ uri, seed, radius = radii.xl, frame = 5, style }: PhotoObjectProps) {
+  const colors = useThemeColors();
+
   const [failed, setFailed] = useState(false);
   return (
     <View

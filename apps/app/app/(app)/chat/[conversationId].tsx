@@ -29,14 +29,14 @@ import {
   Screen,
   SkeletonList,
   Text,
-  colors,
   layout,
   radii,
   spacing,
   useMotionOK,
+  useThemeColors,
 } from '@pandam/ui';
 
-import { M } from '@/components/matches/MatchesUI';
+import { useM } from '@/components/matches/MatchesUI';
 import { CornerDecor } from '@/components/profile/ProfileUI';
 import { IS_DEMO_DATA, demoConversations, demoMessages, demoQuery } from '@/dummy';
 import { ErrorState } from '@/components/states';
@@ -107,6 +107,10 @@ function group(messages: MessageView[]): Rendered[] {
  * every card elsewhere in the product, not a borrowed messaging-app style.
  */
 function Bubble({ item }: { item: Rendered }) {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   const { message, startsRun, endsRun } = item;
   const mine = message.isMine;
 
@@ -122,9 +126,9 @@ function Bubble({ item }: { item: Rendered }) {
       >
         <View
           style={{
-            backgroundColor: mine ? M.red : '#FBFAF7',
+            backgroundColor: mine ? M.red : M.surface,
             borderWidth: mine ? 0 : 1.2,
-            borderColor: '#C9C7C2',
+            borderColor: colors.borderSoft,
             borderRadius: 14,
             // The corner facing this speaker's side squares off mid-run, so a
             // run reads as one block of speech rather than three separate ones.
@@ -180,6 +184,8 @@ function Bubble({ item }: { item: Rendered }) {
 
 /** The "Today" / "Yesterday" rule between days — a Swiss hairline, not a pill. */
 function DaySeparator({ label }: { label: string }) {
+  const colors = useThemeColors();
+
   return (
     <Row gap="md" align="center" style={{ marginTop: spacing.xl, marginBottom: spacing.xs }}>
       <View style={{ flex: 1, height: layout.hairline, backgroundColor: colors.borderSoft }} />
@@ -207,6 +213,10 @@ function SendButton({
   disabled: boolean;
   onPress: () => void;
 }) {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   const motionOK = useMotionOK();
   const scale = useSharedValue(1);
   const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
@@ -240,19 +250,27 @@ function SendButton({
             borderRadius: radii.pill,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: active ? M.red : '#E4E2DD',
+            backgroundColor: active ? M.red : M.border,
             borderWidth: 0,
           },
           style,
         ]}
       >
-        <Ionicons name="arrow-up" size={22} color={active ? colors.textInverse : '#9A9892'} />
+        <Ionicons
+          name="arrow-up"
+          size={22}
+          color={active ? colors.textInverse : colors.textMuted}
+        />
       </Animated.View>
     </Press>
   );
 }
 
 export default function ChatScreen() {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   const router = useRouter();
   const { conversationId } = useLocalSearchParams<{ conversationId: string }>();
   const liveConversation = useConversation(conversationId);
@@ -379,7 +397,7 @@ export default function ChatScreen() {
                       fontFamily: 'InterTight_400Regular',
                       fontSize: 15,
                       lineHeight: 20,
-                      color: '#555',
+                      color: colors.textSecondary,
                     }}
                   >
                     {tradeSubtitle(offer.data)}
@@ -408,7 +426,7 @@ export default function ChatScreen() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 borderWidth: 1,
-                borderColor: '#D9D9D9',
+                borderColor: colors.borderSoft,
               }}
             >
               <Ionicons name="ellipsis-horizontal" size={22} color={M.ink} />
@@ -487,8 +505,8 @@ export default function ChatScreen() {
         <View
           style={{
             borderTopWidth: 1,
-            borderTopColor: '#D9D9D9',
-            backgroundColor: '#FBFAF7',
+            borderTopColor: colors.borderSoft,
+            backgroundColor: colors.surface,
           }}
         >
           {pendingImage ? (
@@ -523,7 +541,7 @@ export default function ChatScreen() {
                     width: 20,
                     height: 20,
                     borderRadius: radii.pill,
-                    backgroundColor: colors.textPrimary,
+                    backgroundColor: colors.need,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
@@ -567,7 +585,7 @@ export default function ChatScreen() {
             <View style={{ flex: 1 }}>
               <TextInput
                 placeholder="Message..."
-                placeholderTextColor="#9A9892"
+                placeholderTextColor={colors.textMuted}
                 value={draft}
                 onChangeText={handleDraftChange}
                 onSubmitEditing={handleSend}
@@ -583,8 +601,8 @@ export default function ChatScreen() {
                   paddingBottom: 12,
                   borderRadius: 10,
                   borderWidth: 1.2,
-                  borderColor: '#C9C7C2',
-                  backgroundColor: '#F1EFE9',
+                  borderColor: colors.borderSoft,
+                  backgroundColor: colors.surfaceMuted,
                   fontFamily: 'InterTight_400Regular',
                   fontSize: 16,
                   color: M.ink,

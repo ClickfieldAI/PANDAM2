@@ -1,7 +1,9 @@
 import { type ReactNode } from 'react';
 import { View } from 'react-native';
 
-import { colors, radii, spacing } from '../tokens';
+import { useThemeColors } from '../theme';
+import { radii, spacing } from '../tokens';
+import { type ThemeColors } from '../tokens';
 
 import { Text } from './Text';
 
@@ -33,7 +35,9 @@ export interface BadgeProps {
  * is the difference between a badge that looks designed and one that looks
  * washed out at arm's length.
  */
-const SPEC: Record<Kind, { soft: string; border: string; fg: string; solid: string }> = {
+const makeSPEC = (
+  colors: ThemeColors,
+): Record<Kind, { soft: string; border: string; fg: string; solid: string }> => ({
   have: {
     soft: colors.accentSoft,
     border: colors.accentBorder,
@@ -82,7 +86,7 @@ const SPEC: Record<Kind, { soft: string; border: string; fg: string; solid: stri
     fg: colors.infoText,
     solid: colors.info,
   },
-};
+});
 
 /**
  * Small pill for a status or a HAVE / NEED / MATCH marker.
@@ -92,7 +96,9 @@ const SPEC: Record<Kind, { soft: string; border: string; fg: string; solid: stri
  * `overline` section eyebrow, and two competing caps styles read as noise.
  */
 export function Badge({ label, kind = 'neutral', variant = 'soft', icon, dot }: BadgeProps) {
-  const spec = SPEC[kind];
+  const colors = useThemeColors();
+
+  const spec = makeSPEC(colors)[kind];
   const solid = variant === 'solid';
   const fg = solid ? colors.textInverse : spec.fg;
 

@@ -2,7 +2,14 @@ import { type ReactNode, useCallback, useRef } from 'react';
 import { type LayoutChangeEvent, type StyleProp, View, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
-import { FloatingObject, Gradient, colors, palette, useMotionOK } from '@pandam/ui';
+import {
+  FloatingObject,
+  Gradient,
+  palette,
+  useMotionOK,
+  useResolvedScheme,
+  useThemeColors,
+} from '@pandam/ui';
 
 import { brandImages, type BrandImageKey } from './imagery';
 import { OrganicShape } from './OrganicShape';
@@ -136,9 +143,13 @@ function Glow({ size, color, style }: { size: number; color: string; style: obje
  * page edges and top, away from where body text runs, and is decorative only.
  */
 export function PandamBackground({ variant = 'quiet' }: { variant?: Variant }) {
-  const T = palette.orange50;
-  const C = palette.concreteSoft;
-  const S = palette.orange50;
+  const colors = useThemeColors();
+  const scheme = useResolvedScheme();
+
+  const dark = scheme === 'dark';
+  const T = dark ? colors.accentSoft : palette.orange50;
+  const C = dark ? colors.surfaceMuted : palette.concreteSoft;
+  const S = dark ? colors.accentSoft : palette.orange50;
   const shapes: Record<Variant, ReactNode> = {
     home: (
       <>
@@ -211,7 +222,7 @@ export function PandamBackground({ variant = 'quiet' }: { variant?: Variant }) {
     glow: (
       <>
         <Gradient
-          colors={['#F1DFCC', colors.background]}
+          colors={[scheme === 'dark' ? colors.backgroundSecondary : '#F1DFCC', colors.background]}
           direction="vertical"
           style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 360 }}
         />

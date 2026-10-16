@@ -14,7 +14,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
-import { Notice, Press, Screen, Text, colors, haptic, useToast } from '@pandam/ui';
+import { Notice, Press, Screen, Text, haptic, useToast, useThemeColors } from '@pandam/ui';
 
 import { AvatarPicker } from '@/components/AvatarPicker';
 import { OAuthButtons, OAuthDivider } from '@/components/brand/OAuthButtons';
@@ -40,12 +40,6 @@ type RegisterFormValues = z.infer<typeof registerFormSchema>;
 /** Swiss palette — deliberately tiny (same values as the login screen). */
 const RED = '#FF3B2F';
 const RED_PRESSED = '#E02F1F';
-const INK = '#111111';
-const MUTED = '#666666';
-const BG = '#F8F7F3';
-const RULE = '#D9D9D9';
-const FIELD_BG = '#EDEBE6';
-const FIELD_BORDER = '#C9C7C2';
 /** Page margin on the 8pt spacing scale (8 / 16 / 24 / 32 / 48). */
 const G = 16;
 const display = { fontFamily: 'Inter_700Bold' } as const;
@@ -98,6 +92,8 @@ function Print({
   region: Region;
   label: string;
 }) {
+  const colors = useThemeColors();
+
   const pad = Math.max(2, Math.round(3 * s));
   return (
     <View
@@ -110,7 +106,7 @@ function Print({
         width: w * s,
         height: h * s,
         padding: pad,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: colors.surface,
         transform: [{ rotate: `${rot}deg` }],
         shadowColor: '#000',
         shadowOpacity: 0.18,
@@ -130,6 +126,10 @@ function Print({
  * 390pt canvas and scaled, so the composition holds on any phone width.
  */
 function Hero({ width }: { width: number }) {
+  const colors = useThemeColors();
+  const MUTED = colors.textMuted;
+  const INK = colors.textPrimary;
+
   const s = width / 390;
   const big = 56 * s;
   const small = 40 * s;
@@ -347,7 +347,7 @@ function Hero({ width }: { width: number }) {
         }}
       >
         <View style={{ width: 6 * s, height: 6 * s, borderRadius: 4 * s, backgroundColor: RED }} />
-        <View style={{ width: 14 * s, height: 1, backgroundColor: INK }} />
+        <View style={{ width: 14 * s, height: 1, backgroundColor: colors.need }} />
         <Text style={{ ...caps, fontSize: 7 * s, letterSpacing: 0.9, color: MUTED }}>People</Text>
         <Text style={{ ...caps, fontSize: 7 * s, letterSpacing: 0.9, color: MUTED }}>Things</Text>
         <Text style={{ ...caps, fontSize: 7 * s, letterSpacing: 0.9, color: INK }}>Community</Text>
@@ -373,6 +373,11 @@ function BoxField({
   error?: string;
   trailing?: React.ReactNode;
 }) {
+  const colors = useThemeColors();
+  const FIELD_BORDER = colors.borderSoft;
+  const INK = colors.textPrimary;
+  const MUTED = colors.textMuted;
+
   const [focused, setFocused] = useState(false);
   return (
     <View style={{ gap: 6 }}>
@@ -387,7 +392,7 @@ function BoxField({
           borderWidth: 1,
           borderRadius: 8,
           borderColor: error ? colors.danger : focused ? RED : FIELD_BORDER,
-          backgroundColor: FIELD_BG,
+          backgroundColor: colors.surfaceMuted,
         }}
       >
         <Ionicons name={icon} size={19} color={INK} />
@@ -440,6 +445,12 @@ function BoxField({
 }
 
 export default function RegisterScreen() {
+  const colors = useThemeColors();
+  const BG = colors.background;
+  const INK = colors.textPrimary;
+  const MUTED = colors.textMuted;
+  const RULE = colors.borderSoft;
+
   const router = useRouter();
   const register = useRegister();
   const uploadAvatar = useUploadAvatar();
@@ -531,9 +542,9 @@ export default function RegisterScreen() {
                 padding: G,
                 gap: 16,
                 borderWidth: 1,
-                borderColor: INK,
+                borderColor: colors.border,
                 borderRadius: 10,
-                backgroundColor: '#FBFAF7',
+                backgroundColor: colors.surface,
               }}
             >
               <View style={{ gap: 6 }}>
@@ -635,7 +646,7 @@ export default function RegisterScreen() {
                         paddingHorizontal: 8,
                         borderWidth: 1,
                         borderRadius: 8,
-                        borderColor: FIELD_BORDER,
+                        borderColor: colors.borderSoft,
                       }}
                     >
                       <Text

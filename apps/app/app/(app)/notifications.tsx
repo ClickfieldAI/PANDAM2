@@ -14,9 +14,9 @@ import {
   Screen,
   SkeletonList,
   Text,
-  colors,
   layout,
   spacing,
+  useThemeColors,
 } from '@pandam/ui';
 
 import { demoMergeList, demoNotifications } from '@/dummy';
@@ -79,6 +79,8 @@ function target(n: NotificationView): string | null {
  * where it gets denied out of reflex.
  */
 function PushOptIn() {
+  const colors = useThemeColors();
+
   // `pushSupported()` reads only the platform and device kind, so it is
   // resolved in the initial state rather than in the effect — on a simulator
   // or on web this component then never renders or schedules anything.
@@ -133,6 +135,8 @@ function PushOptIn() {
 }
 
 export default function NotificationsScreen() {
+  const colors = useThemeColors();
+
   const router = useRouter();
   const notifications = demoMergeList(useNotifications(), demoNotifications);
   const markRead = useMarkNotificationRead();

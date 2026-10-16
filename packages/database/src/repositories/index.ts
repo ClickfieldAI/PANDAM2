@@ -13,6 +13,7 @@ import { barterTransactionsRepository } from './barter-transactions';
 import { categoriesRepository } from './categories';
 import { conversationsRepository } from './conversations';
 import { credentialsRepository } from './credentials';
+import { demoFeeTransactionsRepository } from './demo-fee-transactions';
 import { disputesRepository } from './disputes';
 import { itemViewsRepository } from './item-views';
 import { listingImagesRepository } from './listing-images';
@@ -57,6 +58,7 @@ export function createRepositories(db: Database) {
     reports: reportsRepository(db),
     disputes: disputesRepository(db),
     payments: paymentsRepository(db),
+    demoFeeTransactions: demoFeeTransactionsRepository(db),
     itemViews: itemViewsRepository(db),
   };
 }

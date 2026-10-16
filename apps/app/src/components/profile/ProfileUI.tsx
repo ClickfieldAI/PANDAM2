@@ -10,11 +10,14 @@ import Svg, { Path } from 'react-native-svg';
 import { type MarketItem } from '@pandam/types';
 import { CoverTile, Press } from '@pandam/ui';
 
+import { TourTarget } from '@/lib/tour/TourTarget';
+
 import { SaveHeart } from '@/components/brand/SaveHeart';
-import { M, RedBlob } from '@/components/matches/MatchesUI';
+import { useM, RedBlob } from '@/components/matches/MatchesUI';
 import { primaryImage } from '@/lib/api/media';
 import { formatMoney, timeAgo } from '@/lib/format';
 import { categoryIcon } from '@/lib/icons';
+import { useThemeColors } from '@pandam/ui';
 
 export const GUTTER = 20;
 const TITLE = 'InterTight_900Black';
@@ -30,6 +33,8 @@ type IconName = ComponentProps<typeof Ionicons>['name'];
 /* ------------------------------- decoration -------------------------------- */
 
 export function AccentLines({ size = 50, style }: { size?: number; style?: object }) {
+  const M = useM();
+
   return (
     <View pointerEvents="none" style={[{ position: 'absolute' }, style]}>
       <Svg width={size} height={size} viewBox="0 0 100 100">
@@ -117,6 +122,10 @@ export function BigHeader({
   subtitle: string;
   right?: ReactNode;
 }) {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   return (
     <View style={{ paddingHorizontal: GUTTER, paddingTop: 10 }}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
@@ -149,7 +158,13 @@ export function BigHeader({
         {right}
       </View>
       <Text
-        style={{ fontFamily: REG, fontSize: 14.5, lineHeight: 20, color: '#3A3A3A', marginTop: 2 }}
+        style={{
+          fontFamily: REG,
+          fontSize: 14.5,
+          lineHeight: 20,
+          color: colors.textSecondary,
+          marginTop: 2,
+        }}
       >
         {subtitle}
       </Text>
@@ -168,6 +183,10 @@ export function SectionTitle({
   actionLabel?: string;
   onAction?: () => void;
 }) {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   return (
     <View
       style={{
@@ -190,7 +209,9 @@ export function SectionTitle({
           {title}
         </Text>
         {subtitle ? (
-          <Text style={{ fontFamily: REG, fontSize: 14, color: '#444', marginTop: 1 }}>
+          <Text
+            style={{ fontFamily: REG, fontSize: 14, color: colors.textSecondary, marginTop: 1 }}
+          >
             {subtitle}
           </Text>
         ) : null}
@@ -215,35 +236,40 @@ export function SectionTitle({
 /* ------------------------------ profile card -------------------------------- */
 
 export function SettingsButton({ onPress }: { onPress: () => void }) {
+  const M = useM();
+
   return (
-    <Press
-      haptic="light"
-      scale="lg"
-      accessibilityLabel="Account settings"
-      onPress={onPress}
-      hitSlop={6}
-      style={{
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        marginTop: 34,
-        backgroundColor: M.surface,
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: '#000',
-        shadowOpacity: 0.12,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 3 },
-        elevation: 4,
-      }}
-    >
-      <Ionicons name="settings" size={23} color={M.ink} />
-    </Press>
+    <TourTarget id="profile-settings" style={{ marginTop: 34 }}>
+      <Press
+        haptic="light"
+        scale="lg"
+        accessibilityLabel="Account settings"
+        onPress={onPress}
+        hitSlop={6}
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: 24,
+          backgroundColor: M.surface,
+          alignItems: 'center',
+          justifyContent: 'center',
+          shadowColor: '#000',
+          shadowOpacity: 0.12,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 3 },
+          elevation: 4,
+        }}
+      >
+        <Ionicons name="settings" size={23} color={M.ink} />
+      </Press>
+    </TourTarget>
   );
 }
 
 /** Pale-pink ring around the avatar, as in the reference. */
 export function AvatarRing({ children, size }: { children: ReactNode; size: number }) {
+  const M = useM();
+
   return (
     <View
       style={{
@@ -270,6 +296,8 @@ export function OutlinedButton({
   onPress: () => void;
   compact?: boolean;
 }) {
+  const M = useM();
+
   return (
     <Press
       haptic="light"
@@ -282,7 +310,7 @@ export function OutlinedButton({
         paddingHorizontal: 22,
         borderRadius: 7,
         borderWidth: 1.4,
-        borderColor: M.ink,
+        borderColor: M.line,
         backgroundColor: M.bg,
         alignItems: 'center',
         justifyContent: 'center',
@@ -294,6 +322,10 @@ export function OutlinedButton({
 }
 
 export function StatTiles({ stats }: { stats: { n: number; label: string; red?: boolean }[] }) {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   return (
     <View style={{ flexDirection: 'row', gap: 8 }}>
       {stats.map((s) => (
@@ -303,7 +335,7 @@ export function StatTiles({ stats }: { stats: { n: number; label: string; red?: 
             flex: 1,
             height: 68,
             borderRadius: 9,
-            backgroundColor: '#EDEBE6',
+            backgroundColor: colors.surfaceMuted,
             alignItems: 'center',
             justifyContent: 'center',
             gap: 1,
@@ -314,7 +346,9 @@ export function StatTiles({ stats }: { stats: { n: number; label: string; red?: 
           >
             {s.n}
           </Text>
-          <Text style={{ fontFamily: REG, fontSize: 13, color: '#444' }}>{s.label}</Text>
+          <Text style={{ fontFamily: REG, fontSize: 13, color: colors.textSecondary }}>
+            {s.label}
+          </Text>
         </View>
       ))}
     </View>
@@ -332,8 +366,12 @@ function Tag({
   tone: 'pink' | 'green' | 'gray';
   dot?: boolean;
 }) {
-  const bg = tone === 'pink' ? M.pink : tone === 'green' ? '#DDF3E4' : '#E4E2DD';
-  const fg = tone === 'pink' ? '#E02F1F' : tone === 'green' ? '#1F8A44' : '#555';
+  const M = useM();
+  const colors = useThemeColors();
+
+  const bg = tone === 'pink' ? M.pink : tone === 'green' ? colors.successSoft : M.track;
+  const fg =
+    tone === 'pink' ? colors.accentText : tone === 'green' ? colors.successText : M.secondary;
   return (
     <View
       style={{
@@ -372,6 +410,10 @@ export function ProfileItemCard({
   width: number;
   onPress: () => void;
 }) {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   const isHave = item.kind === 'listing';
   const price = item.pricing?.priceAmount;
   const status = STATUS[item.status] ?? { label: item.status, tone: 'gray' as const };
@@ -388,11 +430,11 @@ export function ProfileItemCard({
           borderRadius: 14,
           overflow: 'hidden',
           borderWidth: 1.4,
-          borderColor: M.ink,
+          borderColor: M.line,
           backgroundColor: M.surface,
         }}
       >
-        <View style={{ height: imgH, backgroundColor: '#E4E2DD' }}>
+        <View style={{ height: imgH, backgroundColor: colors.surfaceMuted }}>
           <CoverTile
             seed={item.id}
             height={imgH}
@@ -415,7 +457,7 @@ export function ProfileItemCard({
               flexDirection: 'row',
               alignItems: 'center',
               gap: 5,
-              backgroundColor: isHave ? M.red : '#111',
+              backgroundColor: isHave ? M.red : M.inkFill,
               borderRadius: 6,
               paddingHorizontal: 9,
               paddingVertical: 5,
@@ -434,7 +476,10 @@ export function ProfileItemCard({
           >
             {item.title}
           </Text>
-          <Text numberOfLines={1} style={{ fontFamily: REG, fontSize: 13, color: '#777' }}>
+          <Text
+            numberOfLines={1}
+            style={{ fontFamily: REG, fontSize: 13, color: colors.textMuted }}
+          >
             {item.category.name} · {timeAgo(item.createdAt)}
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
@@ -470,6 +515,10 @@ export function EmptyNeed({
   onAction: () => void;
   icon?: IconName;
 }) {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   return (
     <View style={{ alignItems: 'center', paddingHorizontal: GUTTER, marginTop: 6 }}>
       <View style={{ width: 300, height: 170, alignItems: 'center' }}>
@@ -487,9 +536,9 @@ export function EmptyNeed({
             width: 96,
             height: 96,
             borderRadius: 22,
-            backgroundColor: '#EEEDE9',
+            backgroundColor: colors.surfaceMuted,
             borderWidth: 1.6,
-            borderColor: M.ink,
+            borderColor: M.line,
             alignItems: 'center',
             justifyContent: 'center',
             shadowColor: '#000',
@@ -512,7 +561,7 @@ export function EmptyNeed({
         style={{
           fontFamily: REG,
           fontSize: 14.5,
-          color: '#444',
+          color: colors.textSecondary,
           textAlign: 'center',
           marginTop: 4,
         }}
@@ -530,7 +579,7 @@ export function EmptyNeed({
           marginTop: 14,
           height: 46,
           borderRadius: 8,
-          backgroundColor: '#111111',
+          backgroundColor: colors.need,
           paddingHorizontal: 26,
           flexDirection: 'row',
           alignItems: 'center',
@@ -547,6 +596,10 @@ export function EmptyNeed({
 /* --------------------------------- panels ---------------------------------- */
 
 export function Panel({ children }: { children: ReactNode }) {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   return (
     <View
       style={{
@@ -554,8 +607,8 @@ export function Panel({ children }: { children: ReactNode }) {
         marginTop: 10,
         borderRadius: 12,
         borderWidth: 1.4,
-        borderColor: M.ink,
-        backgroundColor: '#FBFAF7',
+        borderColor: M.line,
+        backgroundColor: colors.surface,
         overflow: 'hidden',
       }}
     >
@@ -583,6 +636,10 @@ export function MenuRow({
   chevron?: boolean;
   badge?: number;
 }) {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   const red = tone === 'red';
   return (
     <Press
@@ -591,7 +648,7 @@ export function MenuRow({
       accessibilityRole="button"
       accessibilityLabel={title}
       onPress={onPress}
-      states={{ pressed: { backgroundColor: '#F1EFE9' } }}
+      states={{ pressed: { backgroundColor: colors.surfaceMuted } }}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -599,7 +656,7 @@ export function MenuRow({
         paddingHorizontal: 12,
         paddingVertical: 10,
         borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: '#E4E2DD',
+        borderBottomColor: colors.borderSoft,
       }}
     >
       <View
@@ -609,7 +666,7 @@ export function MenuRow({
           borderRadius: 8,
           borderWidth: 1.3,
           borderColor: red ? M.red : M.ink,
-          backgroundColor: red ? '#FFF1EE' : '#EFEEEA',
+          backgroundColor: red ? M.pink : M.track,
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -629,7 +686,7 @@ export function MenuRow({
         {subtitle ? (
           <Text
             numberOfLines={1}
-            style={{ fontFamily: REG, fontSize: 13, color: '#555', marginTop: 1 }}
+            style={{ fontFamily: REG, fontSize: 13, color: colors.textSecondary, marginTop: 1 }}
           >
             {subtitle}
           </Text>
@@ -652,7 +709,7 @@ export function MenuRow({
           </Text>
         </View>
       ) : null}
-      {chevron ? <Ionicons name="chevron-forward" size={18} color="#444" /> : null}
+      {chevron ? <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} /> : null}
     </Press>
   );
 }
@@ -660,11 +717,11 @@ export function MenuRow({
 /* --------------------------------- edit form -------------------------------- */
 
 export function FieldLabel({ children }: { children: string }) {
+  const M = useM();
+
   return (
     <Text style={{ fontFamily: BOLD, fontSize: 16, color: M.ink, marginBottom: 6 }}>
       {children}
     </Text>
   );
 }
-
-export const INPUT_BORDER = '#C9C7C2';

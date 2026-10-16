@@ -36,6 +36,14 @@ export interface Env {
   RAZORPAY_WEBHOOK_SECRET?: string;
 
   /**
+   * Platform-fee tier schedule for the client DEMO — a JSON array of
+   * { label, minAmount, maxAmount|null, feeAmount, enabled } in paise.
+   * Unset = the built-in SAMPLE tiers (see domain/platform-fee.ts). Not
+   * client-approved commercial rates.
+   */
+  PLATFORM_FEE_TIERS?: string;
+
+  /**
    * Expo push access token. Optional: Expo only requires it once "enhanced
    * push security" is switched on for the project. Without it, sends are
    * unauthenticated and still delivered. See `lib/push.ts`.

@@ -14,10 +14,11 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CountBadge, Text, colors, palette, useMotionOK } from '@pandam/ui';
+import { CountBadge, Text, palette, useMotionOK, useThemeColors } from '@pandam/ui';
 
 import { demoMatches, demoQuery } from '@/dummy';
 import { useMatches } from '@/lib/hooks/useMatches';
+import { TourTarget } from '@/lib/tour/TourTarget';
 
 type TabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -84,6 +85,8 @@ function TabItem({
   onPress: () => void;
   onLongPress: () => void;
 }) {
+  const colors = useThemeColors();
+
   const motionOK = useMotionOK();
   // Immediate tactile press feedback — independent of the focus animation
   // below, so it fires on every touch even when the tab is already active.
@@ -193,10 +196,12 @@ function TabItem({
 
 /** A hairline between neighbouring tabs, shorter than the bar like the reference. */
 function TabDivider() {
+  const colors = useThemeColors();
+
   return (
     <View
       pointerEvents="none"
-      style={{ width: 1, height: 38, alignSelf: 'center', backgroundColor: '#E4E2DC' }}
+      style={{ width: 1, height: 38, alignSelf: 'center', backgroundColor: colors.surfaceMuted }}
     />
   );
 }
@@ -205,6 +210,8 @@ function TabDivider() {
  *  breaks through the panel's top edge — not a circular FAB, not inside a
  *  tab column. */
 function CreateButton({ onPress }: { onPress: () => void }) {
+  const colors = useThemeColors();
+
   const motionOK = useMotionOK();
   const scale = useSharedValue(1);
   const rotate = useSharedValue(0);
@@ -224,56 +231,58 @@ function CreateButton({ onPress }: { onPress: () => void }) {
         alignItems: 'center',
       }}
     >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Add something"
-        onPress={() => {
-          if (motionOK) {
-            // 1 → 0.92 → 1.04 → 1: a quick, weighty tap-down then a tiny
-            // overshoot settle — not a bounce, one controlled correction.
-            scale.set(
-              withSequence(
-                withTiming(0.92, { duration: 90, easing: EASE_OUT }),
-                withTiming(1.04, { duration: 120, easing: EASE_OUT }),
-                withTiming(1, { duration: 110, easing: EASE_OUT }),
-              ),
-            );
-            rotate.set(
-              withSequence(
-                withTiming(-4, { duration: 90, easing: EASE_OUT }),
-                withTiming(3, { duration: 120, easing: EASE_OUT }),
-                withTiming(0, { duration: 110, easing: EASE_OUT }),
-              ),
-            );
-          }
-          if (Platform.OS !== 'web') {
-            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-          }
-          onPress();
-        }}
-        hitSlop={8}
-      >
-        <Animated.View
-          style={[
-            {
-              width: CREATE_SIZE,
-              height: CREATE_SIZE,
-              borderRadius: 15,
-              backgroundColor: colors.accent,
-              alignItems: 'center',
-              justifyContent: 'center',
-              shadowColor: colors.accent,
-              shadowOpacity: 0.38,
-              shadowRadius: 12,
-              shadowOffset: { width: 0, height: 7 },
-              elevation: 10,
-            },
-            square,
-          ]}
+      <TourTarget id="tab-create">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Add something"
+          onPress={() => {
+            if (motionOK) {
+              // 1 → 0.92 → 1.04 → 1: a quick, weighty tap-down then a tiny
+              // overshoot settle — not a bounce, one controlled correction.
+              scale.set(
+                withSequence(
+                  withTiming(0.92, { duration: 90, easing: EASE_OUT }),
+                  withTiming(1.04, { duration: 120, easing: EASE_OUT }),
+                  withTiming(1, { duration: 110, easing: EASE_OUT }),
+                ),
+              );
+              rotate.set(
+                withSequence(
+                  withTiming(-4, { duration: 90, easing: EASE_OUT }),
+                  withTiming(3, { duration: 120, easing: EASE_OUT }),
+                  withTiming(0, { duration: 110, easing: EASE_OUT }),
+                ),
+              );
+            }
+            if (Platform.OS !== 'web') {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+            }
+            onPress();
+          }}
+          hitSlop={8}
         >
-          <Ionicons name="add" size={32} color={palette.white} />
-        </Animated.View>
-      </Pressable>
+          <Animated.View
+            style={[
+              {
+                width: CREATE_SIZE,
+                height: CREATE_SIZE,
+                borderRadius: 15,
+                backgroundColor: colors.accent,
+                alignItems: 'center',
+                justifyContent: 'center',
+                shadowColor: colors.accent,
+                shadowOpacity: 0.38,
+                shadowRadius: 12,
+                shadowOffset: { width: 0, height: 7 },
+                elevation: 10,
+              },
+              square,
+            ]}
+          >
+            <Ionicons name="add" size={32} color={palette.white} />
+          </Animated.View>
+        </Pressable>
+      </TourTarget>
     </View>
   );
 }
@@ -290,6 +299,8 @@ function CreateButton({ onPress }: { onPress: () => void }) {
  * routes and deep links are unchanged — only the visual shell is rebuilt.
  */
 export function PandamTabBar({ state, navigation }: TabBarProps) {
+  const colors = useThemeColors();
+
   const insets = useSafeAreaInsets();
   const { width: screenW } = useWindowDimensions();
   const matches = demoQuery(useMatches(), demoMatches);
@@ -314,78 +325,80 @@ export function PandamTabBar({ state, navigation }: TabBarProps) {
       pointerEvents="box-none"
       style={{ position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center' }}
     >
-      <View
-        style={{
-          width: maxW,
-          // The panel is an overlay, not a layout element the page scrolls
-          // above — content keeps running underneath it, exactly like a
-          // bottom sheet attached to the device edge.
-          paddingBottom: insets.bottom,
-          backgroundColor: colors.background,
-          borderTopLeftRadius: 34,
-          borderTopRightRadius: 34,
-          borderTopWidth: 1,
-          borderLeftWidth: 1,
-          borderRightWidth: 1,
-          borderColor: colors.border,
-          overflow: 'visible',
-          shadowColor: colors.border,
-          shadowOpacity: 0.08,
-          shadowRadius: 16,
-          shadowOffset: { width: 0, height: -4 },
-          elevation: 6,
-        }}
-      >
-        <View style={{ height: TAB_BAR_HEIGHT, flexDirection: 'row' }}>
-          {left.map((route, i) => {
-            const focused = route.name === focusedName;
-            if (!ICONS[route.name]) return null;
-            return (
-              <View key={route.key} style={{ flex: 1, flexDirection: 'row' }}>
-                {i > 0 ? <TabDivider /> : null}
-                <TabItem
-                  name={route.name}
-                  focused={focused}
-                  badge={route.name === 'matches' ? matchCount : undefined}
-                  onPress={() => go(route.name, route.key, focused)}
-                  onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
-                />
-              </View>
-            );
-          })}
+      <TourTarget id="tab-bar" style={{ width: maxW }}>
+        <View
+          style={{
+            width: maxW,
+            // The panel is an overlay, not a layout element the page scrolls
+            // above — content keeps running underneath it, exactly like a
+            // bottom sheet attached to the device edge.
+            paddingBottom: insets.bottom,
+            backgroundColor: colors.background,
+            borderTopLeftRadius: 34,
+            borderTopRightRadius: 34,
+            borderTopWidth: 1,
+            borderLeftWidth: 1,
+            borderRightWidth: 1,
+            borderColor: colors.border,
+            overflow: 'visible',
+            shadowColor: colors.border,
+            shadowOpacity: 0.08,
+            shadowRadius: 16,
+            shadowOffset: { width: 0, height: -4 },
+            elevation: 6,
+          }}
+        >
+          <View style={{ height: TAB_BAR_HEIGHT, flexDirection: 'row' }}>
+            {left.map((route, i) => {
+              const focused = route.name === focusedName;
+              if (!ICONS[route.name]) return null;
+              return (
+                <View key={route.key} style={{ flex: 1, flexDirection: 'row' }}>
+                  {i > 0 ? <TabDivider /> : null}
+                  <TabItem
+                    name={route.name}
+                    focused={focused}
+                    badge={route.name === 'matches' ? matchCount : undefined}
+                    onPress={() => go(route.name, route.key, focused)}
+                    onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
+                  />
+                </View>
+              );
+            })}
 
-          {/* Reserves the centre slot the floating button sits over — the
+            {/* Reserves the centre slot the floating button sits over — the
               button itself is absolutely positioned above the panel, never
               inside this row, so it can break through the top edge. */}
-          <View style={{ width: createW }} />
+            <View style={{ width: createW }} />
 
-          {right.map((route) => {
-            const focused = route.name === focusedName;
-            if (!ICONS[route.name]) return null;
-            return (
-              <View key={route.key} style={{ flex: 1, flexDirection: 'row' }}>
-                <TabDivider />
-                <TabItem
-                  name={route.name}
-                  focused={focused}
-                  badge={route.name === 'matches' ? matchCount : undefined}
-                  onPress={() => go(route.name, route.key, focused)}
-                  onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
-                />
-              </View>
-            );
-          })}
+            {right.map((route) => {
+              const focused = route.name === focusedName;
+              if (!ICONS[route.name]) return null;
+              return (
+                <View key={route.key} style={{ flex: 1, flexDirection: 'row' }}>
+                  <TabDivider />
+                  <TabItem
+                    name={route.name}
+                    focused={focused}
+                    badge={route.name === 'matches' ? matchCount : undefined}
+                    onPress={() => go(route.name, route.key, focused)}
+                    onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
+                  />
+                </View>
+              );
+            })}
+          </View>
+
+          {routes
+            .filter((r) => r.name === CREATE)
+            .map((route) => {
+              const focused = route.name === focusedName;
+              return (
+                <CreateButton key={route.key} onPress={() => go(route.name, route.key, focused)} />
+              );
+            })}
         </View>
-
-        {routes
-          .filter((r) => r.name === CREATE)
-          .map((route) => {
-            const focused = route.name === focusedName;
-            return (
-              <CreateButton key={route.key} onPress={() => go(route.name, route.key, focused)} />
-            );
-          })}
-      </View>
+      </TourTarget>
     </View>
   );
 }

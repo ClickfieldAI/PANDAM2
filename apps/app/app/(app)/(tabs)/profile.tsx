@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useRef } from 'react';
 import { Alert, Platform, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 
 import { type MarketItem } from '@pandam/types';
@@ -7,7 +8,7 @@ import { EmptyState, Screen, SkeletonList, useToast } from '@pandam/ui';
 
 import { AppHeader } from '@/components/AppHeader';
 import { AvatarPicker } from '@/components/AvatarPicker';
-import { M } from '@/components/matches/MatchesUI';
+import { useM } from '@/components/matches/MatchesUI';
 import {
   AvatarRing,
   BigHeader,
@@ -32,6 +33,9 @@ import { useMyItems } from '@/lib/hooks/useMarket';
 import { useUploadAvatar } from '@/lib/hooks/useMedia';
 import { useUnreadNotificationCount } from '@/lib/hooks/useNotifications';
 import { useTransactions } from '@/lib/hooks/useTransactions';
+import { TourTarget } from '@/lib/tour/TourTarget';
+import { useTour } from '@/lib/tour/TourProvider';
+import { useThemeColors } from '@pandam/ui';
 
 function MyItemsSection({
   kind,
@@ -94,11 +98,17 @@ function MyItemsSection({
 }
 
 export default function ProfileScreen() {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   const uploadAvatar = useUploadAvatar();
   const avatarToast = useToast();
   const router = useRouter();
   const { user, profile } = useSession();
   const logout = useLogout();
+  const tour = useTour();
+  const scrollRef = useRef<ScrollView>(null);
   const unread = useUnreadNotificationCount();
   const myHave = demoMergeList(useMyItems('listing'), demoMyListings);
   const myNeed = demoMergeList(useMyItems('need'), demoMyNeeds);
@@ -139,7 +149,7 @@ export default function ProfileScreen() {
     .join(', ');
 
   return (
-    <Screen scroll padded={false} tabBarInset background={M.bg}>
+    <Screen scroll scrollRef={scrollRef} padded={false} tabBarInset background={M.bg}>
       <View style={{ width: '100%', maxWidth: 720, alignSelf: 'center' }}>
         <CornerDecor />
         <BigHeader
@@ -156,7 +166,7 @@ export default function ProfileScreen() {
             marginTop: 16,
             borderRadius: 14,
             borderWidth: 1.4,
-            borderColor: M.ink,
+            borderColor: M.line,
             backgroundColor: M.bg,
             padding: 16,
             gap: 14,
@@ -196,7 +206,7 @@ export default function ProfileScreen() {
                 style={{
                   fontFamily: 'InterTight_400Regular',
                   fontSize: 14,
-                  color: '#666',
+                  color: colors.textMuted,
                   marginTop: 1,
                 }}
               >
@@ -214,13 +224,13 @@ export default function ProfileScreen() {
               ) : null}
               {location ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
-                  <Ionicons name="location-outline" size={13} color="#666" />
+                  <Ionicons name="location-outline" size={13} color={colors.textMuted} />
                   <Text
                     numberOfLines={1}
                     style={{
                       fontFamily: 'InterTight_400Regular',
                       fontSize: 12.5,
-                      color: '#666',
+                      color: colors.textMuted,
                       flexShrink: 1,
                     }}
                   >
@@ -250,7 +260,7 @@ export default function ProfileScreen() {
                 fontFamily: 'InterTight_400Regular',
                 fontSize: 14.5,
                 lineHeight: 20,
-                color: '#444',
+                color: colors.textSecondary,
               }}
             >
               {profile.bio}
@@ -268,41 +278,43 @@ export default function ProfileScreen() {
 
           <View>
             <SectionTitle title="Your trading" />
-            <Panel>
-              <MenuRow
-                icon="sparkles-outline"
-                title="Matches"
-                subtitle="Reciprocal barters found for you"
-                onPress={() => router.push('/(app)/(tabs)/matches')}
-              />
-              <MenuRow
-                icon="paper-plane-outline"
-                title="Offers"
-                subtitle="Proposals you have sent and received"
-                onPress={() => router.push('/(app)/(tabs)/matches?tab=received')}
-              />
-              <MenuRow
-                icon="chatbubble-outline"
-                title="Messages"
-                subtitle="Chats for trades you have agreed"
-                onPress={() => router.push('/(app)/messages')}
-              />
-              <MenuRow
-                icon="repeat-outline"
-                title="Transactions"
-                subtitle="Track and complete your trades"
-                onPress={() => router.push('/(app)/transactions')}
-              />
-              <MenuRow
-                icon="notifications-outline"
-                tone="neutral"
-                title="Notifications"
-                subtitle={unread > 0 ? `${unread} unread` : 'Offers, messages and trade updates'}
-                badge={unread}
-                last
-                onPress={() => router.push('/(app)/notifications')}
-              />
-            </Panel>
+            <TourTarget id="profile-trading" scrollRef={scrollRef}>
+              <Panel>
+                <MenuRow
+                  icon="sparkles-outline"
+                  title="Matches"
+                  subtitle="Reciprocal barters found for you"
+                  onPress={() => router.push('/(app)/(tabs)/matches')}
+                />
+                <MenuRow
+                  icon="paper-plane-outline"
+                  title="Offers"
+                  subtitle="Proposals you have sent and received"
+                  onPress={() => router.push('/(app)/(tabs)/matches?tab=received')}
+                />
+                <MenuRow
+                  icon="chatbubble-outline"
+                  title="Messages"
+                  subtitle="Chats for trades you have agreed"
+                  onPress={() => router.push('/(app)/messages')}
+                />
+                <MenuRow
+                  icon="repeat-outline"
+                  title="Transactions"
+                  subtitle="Track and complete your trades"
+                  onPress={() => router.push('/(app)/transactions')}
+                />
+                <MenuRow
+                  icon="notifications-outline"
+                  tone="neutral"
+                  title="Notifications"
+                  subtitle={unread > 0 ? `${unread} unread` : 'Offers, messages and trade updates'}
+                  badge={unread}
+                  last
+                  onPress={() => router.push('/(app)/notifications')}
+                />
+              </Panel>
+            </TourTarget>
           </View>
 
           <View>
@@ -322,6 +334,22 @@ export default function ProfileScreen() {
                 subtitle="Devices, password, delete account"
                 onPress={() => router.push('/(app)/account')}
               />
+              <MenuRow
+                icon="cash-outline"
+                tone="neutral"
+                title="Platform fee (demo)"
+                subtitle="DEMO · simulated sales, no real money"
+                onPress={() => router.push('/(app)/platform-fee-demo')}
+              />
+              <TourTarget id="profile-replay" scrollRef={scrollRef}>
+                <MenuRow
+                  icon="compass-outline"
+                  tone="neutral"
+                  title="Take the app tour"
+                  subtitle="A quick walkthrough of PANDAM"
+                  onPress={tour.start}
+                />
+              </TourTarget>
               <MenuRow
                 icon="log-out-outline"
                 title={logout.isPending ? 'Signing out…' : 'Sign out'}

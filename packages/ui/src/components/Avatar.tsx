@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Image, View } from 'react-native';
 
-import { colors, coverFor, radii } from '../tokens';
+import { useThemeColors } from '../theme';
+import { coverFor, radii } from '../tokens';
 
 import { Gradient } from './Gradient';
 import { Text } from './Text';
@@ -29,6 +30,8 @@ function initials(name: string): string {
  * a hole, since an avatar is decoration and never worth an error state.
  */
 export function Avatar({ name, size = 40, uri, ring = false }: AvatarProps) {
+  const colors = useThemeColors();
+
   const [failed, setFailed] = useState(false);
   // A new URL (fresh upload, or a retry after a flaky network) deserves a fresh
   // attempt; without this one failed load pins the initials until remount.

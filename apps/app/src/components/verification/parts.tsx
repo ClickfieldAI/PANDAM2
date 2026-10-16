@@ -2,12 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { type ReactNode } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
-import { Row, Stack, Text, colors, radii, spacing } from '@pandam/ui';
+import { Row, Stack, Text, radii, spacing, useThemeColors } from '@pandam/ui';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
 /** Account ✓ → Identity (current) → Complete ○ */
 export function StepProgress({ current }: { current: 'identity' | 'complete' }) {
+  const colors = useThemeColors();
+
   const steps = [
     { key: 'account', label: 'Account' },
     { key: 'identity', label: 'Identity' },
@@ -79,6 +81,8 @@ export function CheckRow({
   children: ReactNode;
   icon?: IconName;
 }) {
+  const colors = useThemeColors();
+
   return (
     <Row gap="sm" align="flex-start">
       <Ionicons name={icon} size={18} color={colors.match} style={{ marginTop: 1 }} />
@@ -97,6 +101,8 @@ export function StepIcon({
   name: IconName;
   tone?: 'accent' | 'match' | 'danger' | 'muted';
 }) {
+  const colors = useThemeColors();
+
   const bg =
     tone === 'match'
       ? colors.matchSoft
@@ -141,6 +147,8 @@ export function StatusState({
   body?: string;
   children?: ReactNode;
 }) {
+  const colors = useThemeColors();
+
   return (
     <Stack gap="lg" align="center" style={{ paddingVertical: spacing['3xl'] }}>
       {kind === 'working' ? (

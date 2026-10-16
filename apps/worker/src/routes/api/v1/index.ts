@@ -15,6 +15,7 @@ import { type AppEnv } from '../../../types';
 import { authRoute } from './auth';
 import { categoriesRoute } from './categories';
 import { conversationsRoute } from './conversations';
+import { demoFeesRoute } from './demo-fees';
 import { createMarketRoute } from './market';
 import { matchesRoute } from './matches';
 import { mediaRoute } from './media';
@@ -128,6 +129,12 @@ const IMPLEMENTED = [
     summary: 'Real-money purchase of a `sale`/`both` listing via Razorpay',
     endpoints: ['POST /', 'GET /mine', 'GET /:id', 'POST /:id/cancel', 'POST /webhook'],
   },
+  {
+    name: 'demo-fees',
+    summary:
+      'DEMO ONLY — tiered platform fee on a simulated sale (no real money; off in production)',
+    endpoints: ['GET /schedule', 'GET /listings', 'POST /quote', 'POST /confirm', 'GET /summary'],
+  },
 ];
 
 /** Route groups that talk to the database — they get the request context. */
@@ -148,6 +155,7 @@ const DB_GROUPS = [
   'notifications',
   'reports',
   'payments',
+  'demo-fees',
 ] as const;
 
 export function createApiV1(deps: AppDeps = {}) {
@@ -189,6 +197,7 @@ export function createApiV1(deps: AppDeps = {}) {
   apiV1.route('/notifications', notificationsRoute);
   apiV1.route('/reports', reportsRoute);
   apiV1.route('/payments', paymentsRoute);
+  apiV1.route('/demo-fees', demoFeesRoute);
   // No context middleware: `media` only touches R2, never the database.
   apiV1.route('/media', mediaRoute);
 

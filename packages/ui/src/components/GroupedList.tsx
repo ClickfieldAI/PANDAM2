@@ -1,7 +1,8 @@
 import { type ReactElement } from 'react';
 import { FlatList, type FlatListProps, type ListRenderItem, View } from 'react-native';
 
-import { colors, radii, spacing } from '../tokens';
+import { useThemeColors } from '../theme';
+import { radii, spacing } from '../tokens';
 
 import { Divider } from './layout';
 
@@ -38,6 +39,8 @@ export function GroupedList<T>({
   data,
   ...rest
 }: GroupedListProps<T>) {
+  const colors = useThemeColors();
+
   const empty = !data || data.length === 0;
 
   /** The left and right edges every row shares. */
@@ -102,6 +105,8 @@ export function GroupedRows({
   children: ReactElement[];
   separatorInset?: number;
 }) {
+  const colors = useThemeColors();
+
   const rows = children.filter(Boolean);
 
   return (

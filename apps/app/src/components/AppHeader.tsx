@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { type ReactNode } from 'react';
 import { View } from 'react-native';
 
-import { IconButton, Row, Text, colors, spacing } from '@pandam/ui';
+import { IconButton, Row, Text, spacing, useThemeColors } from '@pandam/ui';
 
 export interface AppHeaderProps {
   title: string;
@@ -37,6 +37,8 @@ export function AppHeader({
   right,
   size = 'lg',
 }: AppHeaderProps) {
+  const colors = useThemeColors();
+
   const router = useRouter();
 
   return (

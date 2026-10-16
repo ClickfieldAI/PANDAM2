@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { View } from 'react-native';
 
-import { Text, colors, spacing } from '@pandam/ui';
+import { Text, spacing, useThemeColors } from '@pandam/ui';
 
 /**
  * Live checklist under the password field on sign-up.
@@ -22,6 +22,8 @@ const RULES = [
 ];
 
 export function PasswordRequirements({ value }: { value: string }) {
+  const colors = useThemeColors();
+
   if (!value) return null;
 
   return (

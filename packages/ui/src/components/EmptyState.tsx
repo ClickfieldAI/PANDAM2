@@ -2,7 +2,9 @@ import { type ReactNode } from 'react';
 import { View } from 'react-native';
 
 import { FloatingObject } from '../motion/FloatingObject';
-import { colors, layout, radii, shadows, spacing } from '../tokens';
+import { useThemeColors } from '../theme';
+import { layout, radii, shadows, spacing } from '../tokens';
+import { type ThemeColors } from '../tokens';
 
 import { Button } from './Button';
 import { Text } from './Text';
@@ -24,12 +26,14 @@ export interface EmptyStateProps {
   size?: 'page' | 'inline';
 }
 
-const FRAME: Record<NonNullable<EmptyStateProps['tone']>, { bg: string; border: string }> = {
+const makeFRAME = (
+  colors: ThemeColors,
+): Record<NonNullable<EmptyStateProps['tone']>, { bg: string; border: string }> => ({
   accent: { bg: colors.accentSoft, border: colors.accentBorder },
   need: { bg: colors.needSoft, border: colors.needBorder },
   match: { bg: colors.matchSoft, border: colors.matchBorder },
   neutral: { bg: colors.surfaceMuted, border: colors.border },
-};
+});
 
 /**
  * The placeholder shown when a list has nothing in it.
@@ -53,7 +57,9 @@ export function EmptyState({
   onSecondary,
   size = 'page',
 }: EmptyStateProps) {
-  const frame = FRAME[tone];
+  const colors = useThemeColors();
+
+  const frame = makeFRAME(colors)[tone];
   const inline = size === 'inline';
 
   return (

@@ -20,11 +20,11 @@ import {
   Button,
   Gradient,
   Text,
-  colors,
   gradients,
   palette,
   useMotionOK,
   ALLOW_3D,
+  useThemeColors,
 } from '@pandam/ui';
 
 import { brandImages, type BrandImageKey } from '@/components/brand/imagery';
@@ -168,6 +168,8 @@ function Letter({ ch, i, reveal }: { ch: string; i: number; reveal: SharedValue<
  * logic itself is untouched — Retry only re-runs the existing session query.
  */
 export function Splash() {
+  const colors = useThemeColors();
+
   const { width, height } = useWindowDimensions();
   const qc = useQueryClient();
   const motionOK = useMotionOK();

@@ -4,10 +4,9 @@ import { Image, View } from 'react-native';
 import { Press, Text } from '@pandam/ui';
 
 import { homeImages } from '@/lib/homeAssets';
+import { useThemeColors } from '@pandam/ui';
 
 const ORANGE = '#FF3B20';
-const INK = '#111111';
-const CARD_BORDER = '#E9E6DF';
 
 /** Fixed and TALLER than each card's own width — a narrow vertical tile,
  *  not a wide horizontal one. Independent of image size. */
@@ -39,6 +38,9 @@ export function IntentSwitch({
   onHave: () => void;
   onNeed: () => void;
 }) {
+  const colors = useThemeColors();
+  const INK = colors.textPrimary;
+
   const panel = (side: Side, count: number, onPress: () => void) => {
     const c = COPY[side];
     const isHave = side === 'have';
@@ -59,9 +61,9 @@ export function IntentSwitch({
             flex: 1,
             borderRadius: RADIUS,
             overflow: 'hidden',
-            backgroundColor: isHave ? '#E9E6DF' : ORANGE,
+            backgroundColor: isHave ? colors.surfaceMuted : ORANGE,
             borderWidth: isHave ? 1 : 0,
-            borderColor: CARD_BORDER,
+            borderColor: colors.borderSoft,
           }}
         >
           {/* The photo IS the card background, full bleed. */}

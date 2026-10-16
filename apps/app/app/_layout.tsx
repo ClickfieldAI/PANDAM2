@@ -16,11 +16,11 @@ import {
   useFonts,
 } from '@expo-google-fonts/inter-tight';
 import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { Splash } from '@/components/Splash';
 import { initMonitoring } from '@/lib/monitoring';
+import { ThemedStatusBar } from '@/lib/theme/ThemeBridge';
 import { AppProviders } from '@/providers/AppProviders';
 
 export default function RootLayout() {
@@ -47,7 +47,7 @@ export default function RootLayout() {
 
   return (
     <AppProviders>
-      <StatusBar style="dark" />
+      <ThemedStatusBar />
       {fontsLoaded ? <Stack screenOptions={{ headerShown: false }} /> : <Splash />}
     </AppProviders>
   );

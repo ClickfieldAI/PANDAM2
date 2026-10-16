@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Notice, Press, Screen, Text, colors, haptic, useToast } from '@pandam/ui';
+import { Notice, Press, Screen, Text, haptic, useToast, useThemeColors } from '@pandam/ui';
 
 import { OAuthButtons, OAuthDivider } from '@/components/brand/OAuthButtons';
 import { ApiError } from '@/lib/api/client';
@@ -43,6 +43,8 @@ function Crop({
   style?: object;
   label?: string;
 }) {
+  const colors = useThemeColors();
+
   const k = Math.max(width / region.w, height / region.h);
   return (
     <View
@@ -68,10 +70,6 @@ function Crop({
 /** Swiss palette — deliberately tiny. */
 const RED = '#FF3B2F';
 const RED_PRESSED = '#E02F1F';
-const INK = '#111111';
-const MUTED = '#666666';
-const BG = '#F8F7F3';
-const RULE = '#D9D9D9';
 /** Page margin on the 8pt spacing scale (8 / 16 / 24 / 32 / 48). */
 const G = 16;
 const display = { fontFamily: 'Inter_700Bold' } as const; // headline + numerals
@@ -83,6 +81,9 @@ const label = { fontFamily: 'Inter_600SemiBold' } as const; // caps labels, butt
  * proportions on any phone width.
  */
 function Hero({ width, height }: { width: number; height: number }) {
+  const colors = useThemeColors();
+  const INK = colors.textPrimary;
+
   // Horizontal scale follows the screen width; vertical scale is capped by the
   // height the screen can spare, so the hero compresses instead of forcing a
   // scroll on short phones. Images are cover-cropped, so nothing distorts.
@@ -119,7 +120,7 @@ function Hero({ width, height }: { width: number; height: number }) {
           left: xChair,
           height: yEnd,
           width: 1,
-          backgroundColor: INK,
+          backgroundColor: colors.need,
         }}
       />
       <Text
@@ -182,7 +183,7 @@ function Hero({ width, height }: { width: number; height: number }) {
           // ends exactly at the bottom edge of the camera tile (`yEnd`)
           height: yEnd - u(180),
           width: 1,
-          backgroundColor: RULE,
+          backgroundColor: colors.surfaceMuted,
         }}
       />
       <View style={{ position: 'absolute', top: 205 * s, left: ux(95), gap: 3 * s }}>
@@ -252,6 +253,11 @@ function LineField({
   error?: string;
   fieldHeight?: number;
 }) {
+  const colors = useThemeColors();
+  const RULE = colors.borderSoft;
+  const INK = colors.textPrimary;
+  const MUTED = colors.textMuted;
+
   return (
     <View>
       <View
@@ -291,6 +297,12 @@ function LineField({
 }
 
 export default function LoginScreen() {
+  const colors = useThemeColors();
+  const BG = colors.background;
+  const RULE = colors.borderSoft;
+  const INK = colors.textPrimary;
+  const MUTED = colors.textMuted;
+
   const router = useRouter();
   const toast = useToast();
   const login = useLogin();

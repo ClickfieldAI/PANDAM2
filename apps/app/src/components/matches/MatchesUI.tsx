@@ -16,20 +16,27 @@ import { Image, Pressable, Text, View, useWindowDimensions } from 'react-native'
 import Svg, { Path } from 'react-native-svg';
 
 import { Press, haptic } from '@pandam/ui';
+import { useThemeColors } from '@pandam/ui';
 
 /* ----------------------------- design tokens ------------------------------ */
 
-export const M = {
-  red: '#FF3B2F',
-  redPressed: '#E02F1F',
-  ink: '#111111',
-  secondary: '#666666',
-  bg: '#F8F7F3',
-  border: '#D9D9D9',
-  surface: '#FFFFFF',
-  pink: '#FFE8E4',
-  track: '#EDEBE6',
-} as const;
+export function useM() {
+  const c = useThemeColors();
+  return {
+    red: '#FF3B2F',
+    redPressed: '#E02F1F',
+    ink: c.textPrimary,
+    /** Dark fill for "I NEED" surfaces (stays dark-ish in both themes, white text on it). */
+    inkFill: c.need,
+    line: c.border,
+    secondary: c.textMuted,
+    bg: c.background,
+    border: c.borderSoft,
+    surface: c.surface,
+    pink: c.accentSoft,
+    track: c.surfaceMuted,
+  };
+}
 
 const TITLE = 'InterTight_900Black';
 const BOLD = 'InterTight_700Bold';
@@ -52,6 +59,8 @@ export const GUTTER = 22;
 /* ------------------------------- decoration ------------------------------- */
 
 export function RedBlob({ width = 108, height = 100 }: { width?: number; height?: number }) {
+  const M = useM();
+
   return (
     <Svg width={width} height={height} viewBox="0 0 120 110">
       <Path
@@ -63,6 +72,8 @@ export function RedBlob({ width = 108, height = 100 }: { width?: number; height?
 }
 
 function PinkBlob({ width, height }: { width: number; height: number }) {
+  const M = useM();
+
   return (
     <Svg width={width} height={height} viewBox="0 0 300 250" preserveAspectRatio="none">
       <Path
@@ -75,6 +86,8 @@ function PinkBlob({ width, height }: { width: number; height: number }) {
 
 /** Three short hand-drawn strokes that "burst" off a corner. */
 function AccentLines({ size = 52 }: { size?: number }) {
+  const M = useM();
+
   return (
     <Svg width={size} height={size} viewBox="0 0 100 100">
       <Path
@@ -90,6 +103,8 @@ function AccentLines({ size = 52 }: { size?: number }) {
 
 /** The curved hand-drawn scribble that trails off an illustration. */
 function Scribble({ width = 108 }: { width?: number }) {
+  const M = useM();
+
   return (
     <Svg width={width} height={width * 0.5} viewBox="0 0 150 75">
       <Path
@@ -169,6 +184,10 @@ export function MatchesHeader({
   onSettings: () => void;
   trailing?: ReactNode;
 }) {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   const options: { value: MatchesTab; label: string }[] = [
     { value: 'reciprocal', label: 'Mirrors' },
     { value: 'received', label: receivedLabel },
@@ -233,7 +252,7 @@ export function MatchesHeader({
           fontFamily: INTER,
           fontSize: 13.2,
           lineHeight: 19,
-          color: '#3A3A3A',
+          color: colors.textSecondary,
           marginTop: 2,
         }}
       >
@@ -247,7 +266,7 @@ export function MatchesHeader({
           height: 50,
           borderRadius: 25,
           borderWidth: 1.6,
-          borderColor: M.ink,
+          borderColor: M.line,
           backgroundColor: M.track,
           flexDirection: 'row',
           padding: 4,
@@ -301,6 +320,8 @@ export function FilterChips<T extends string>({
   value: T;
   onChange: (v: T) => void;
 }) {
+  const M = useM();
+
   return (
     <View style={{ flexDirection: 'row', gap: 6, paddingHorizontal: GUTTER, marginTop: 14 }}>
       {items.map((it) => {
@@ -346,7 +367,7 @@ export function FilterChips<T extends string>({
                 justifyContent: 'center',
                 backgroundColor: selected ? '#FFFFFF' : 'transparent',
                 borderWidth: selected ? 0 : 1.2,
-                borderColor: M.ink,
+                borderColor: M.line,
               }}
             >
               <Text
@@ -382,6 +403,8 @@ function PhotoCard({
   rotate: number;
   style: object;
 }) {
+  const M = useM();
+
   return (
     <View
       style={[
@@ -412,6 +435,8 @@ function PhotoCard({
 }
 
 function Badge({ icon, style }: { icon: 'sparkles' | 'paper-plane'; style: object }) {
+  const M = useM();
+
   return (
     <View
       style={[
@@ -507,6 +532,8 @@ export function SentArt() {
 
 /** Received: concrete form, raised white tile with the send arrow. */
 export function ReceivedArt() {
+  const M = useM();
+
   return (
     <View style={{ width: ART_W, height: 252 }}>
       <View style={{ position: 'absolute', left: 40, top: 8 }}>
@@ -562,6 +589,8 @@ export function EmptyShell({
   body: string[];
   children?: ReactNode;
 }) {
+  const M = useM();
+
   return (
     <View style={{ alignItems: 'center', paddingTop: 6, paddingHorizontal: GUTTER }}>
       {art}
@@ -583,7 +612,7 @@ export function EmptyShell({
           fontFamily: INTER,
           fontSize: 13,
           lineHeight: 19.5,
-          color: '#3F3F3F',
+          color: M.secondary,
           textAlign: 'center',
           marginTop: 14,
         }}
@@ -596,6 +625,8 @@ export function EmptyShell({
 }
 
 export function PrimaryCta({ label, onPress }: { label: string; onPress: () => void }) {
+  const M = useM();
+
   return (
     <Press
       haptic="light"
@@ -630,6 +661,8 @@ export function PrimaryCta({ label, onPress }: { label: string; onPress: () => v
 }
 
 export function SecondaryLink({ label, onPress }: { label: string; onPress: () => void }) {
+  const M = useM();
+
   return (
     <Press
       haptic="light"

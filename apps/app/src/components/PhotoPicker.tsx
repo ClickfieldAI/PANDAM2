@@ -18,7 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { ActivityIndicator, Alert, Pressable, View } from 'react-native';
 
 import { type ItemImage } from '@pandam/types';
-import { Press, Row, Text, colors, radii, shadows, spacing } from '@pandam/ui';
+import { Press, Row, Text, radii, shadows, spacing, useThemeColors } from '@pandam/ui';
 import { MAX_LISTING_IMAGES } from '@pandam/validation';
 
 import { type MarketKind } from '@/lib/api/market';
@@ -45,6 +45,8 @@ export function PhotoPicker({
   onChangeLocal,
   itemId,
 }: PhotoPickerProps) {
+  const colors = useThemeColors();
+
   const upload = useUploadItemImages(kind);
   const remove = useDeleteItemImage(kind);
 

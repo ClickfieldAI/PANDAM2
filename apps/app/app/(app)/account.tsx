@@ -28,14 +28,15 @@ import {
   SkeletonList,
   Stack,
   Text,
-  colors,
   layout,
   spacing,
   useToast,
   haptic,
+  useThemeColors,
 } from '@pandam/ui';
 
 import { AppHeader } from '@/components/AppHeader';
+import { AppearanceSetting } from '@/components/AppearanceSetting';
 import { ErrorState } from '@/components/states';
 import { ApiError } from '@/lib/api/client';
 import { type SessionView } from '@/lib/api/account';
@@ -85,6 +86,8 @@ function deviceLabel(userAgent: string | null): string {
 }
 
 function DeviceRow({ session, onRevoke }: { session: SessionView; onRevoke: () => void }) {
+  const colors = useThemeColors();
+
   return (
     <ListRow
       leading={
@@ -115,6 +118,8 @@ function DeviceRow({ session, onRevoke }: { session: SessionView; onRevoke: () =
 }
 
 export default function AccountScreen() {
+  const colors = useThemeColors();
+
   const router = useRouter();
   const { user } = useSession();
   const toast = useToast();
@@ -183,6 +188,8 @@ export default function AccountScreen() {
         }}
       >
         <Stack gap="2xl">
+          <AppearanceSetting />
+
           {/* --------------------------------------------------- devices -- */}
           <Stack gap="md">
             <View>

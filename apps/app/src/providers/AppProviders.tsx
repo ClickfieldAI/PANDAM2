@@ -19,6 +19,7 @@ import { ScreenBackdropProvider, ToastProvider } from '@pandam/ui';
 import { AnalyticsProvider } from '@/lib/analytics';
 import { AuthBootstrap } from '@/lib/auth/AuthBootstrap';
 import { createQueryClient } from '@/lib/query';
+import { ThemeBridge } from '@/lib/theme/ThemeBridge';
 
 /**
  * Swiss/neo-brutalist direction: a FLAT off-white page, no ambient glow or
@@ -36,15 +37,17 @@ export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <AnalyticsProvider>
-            <ToastProvider>
-              <ScreenBackdropProvider value={APP_BACKDROP}>
-                <AuthBootstrap>{children}</AuthBootstrap>
-              </ScreenBackdropProvider>
-            </ToastProvider>
-          </AnalyticsProvider>
-        </QueryClientProvider>
+        <ThemeBridge>
+          <QueryClientProvider client={queryClient}>
+            <AnalyticsProvider>
+              <ToastProvider>
+                <ScreenBackdropProvider value={APP_BACKDROP}>
+                  <AuthBootstrap>{children}</AuthBootstrap>
+                </ScreenBackdropProvider>
+              </ToastProvider>
+            </AnalyticsProvider>
+          </QueryClientProvider>
+        </ThemeBridge>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

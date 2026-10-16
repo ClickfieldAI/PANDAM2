@@ -1,7 +1,9 @@
 import { type ReactNode } from 'react';
 import { View } from 'react-native';
 
-import { colors, radii, spacing } from '../tokens';
+import { useThemeColors } from '../theme';
+import { radii, spacing } from '../tokens';
+import { type ThemeColors } from '../tokens';
 
 import { Press } from './Press';
 import { Text } from './Text';
@@ -18,11 +20,12 @@ export interface ChipProps {
   accessibilityLabel?: string;
 }
 
-const TONE = {
-  accent: { bg: colors.accent, soft: colors.accentSoft, text: colors.accentText },
-  need: { bg: colors.need, soft: colors.needSoft, text: colors.needText },
-  match: { bg: colors.match, soft: colors.matchSoft, text: colors.matchText },
-} as const;
+const makeTONE = (colors: ThemeColors) =>
+  ({
+    accent: { bg: colors.accent, soft: colors.accentSoft, text: colors.accentText },
+    need: { bg: colors.need, soft: colors.needSoft, text: colors.needText },
+    match: { bg: colors.match, soft: colors.matchSoft, text: colors.matchText },
+  }) as const;
 
 /**
  * Selectable filter pill (categories, cities, HAVE/NEED toggles).
@@ -45,7 +48,9 @@ export function Chip({
   count,
   accessibilityLabel,
 }: ChipProps) {
-  const t = TONE[tone];
+  const colors = useThemeColors();
+
+  const t = makeTONE(colors)[tone];
   const fg = selected ? colors.textInverse : colors.textSecondary;
 
   const body = (

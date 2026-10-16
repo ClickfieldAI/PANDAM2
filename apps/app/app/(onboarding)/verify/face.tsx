@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Image, Linking, Platform, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Text, colors, layout, palette, radii, spacing } from '@pandam/ui';
+import { Text, layout, palette, radii, spacing, useThemeColors } from '@pandam/ui';
 
 import {
   CameraShape,
@@ -46,6 +46,8 @@ const CAM_PROMPT: Record<CamStage, string> = {
  * never leaves the device and is discarded after this screen.
  */
 export default function FaceVerificationScreen() {
+  const colors = useThemeColors();
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { w, h } = useScreen();
@@ -246,7 +248,7 @@ export default function FaceVerificationScreen() {
           <RedRow icon="glasses-outline">Remove anything covering your face</RedRow>
           <RedRow icon="scan-outline">Position your face inside the frame</RedRow>
         </View>
-        <Text variant="bodySm" style={{ color: '#555', marginTop: 24 }}>
+        <Text variant="bodySm" style={{ color: colors.textSecondary, marginTop: 24 }}>
           Your photo is used only for this verification.
         </Text>
         <View style={{ marginTop: 16 }}>
@@ -263,7 +265,12 @@ export default function FaceVerificationScreen() {
         <View style={{ alignItems: 'center', marginTop: 22, gap: 16 }}>
           <Image
             source={{ uri: photo }}
-            style={{ width: 240, height: 310, borderRadius: 150, backgroundColor: '#EDEBE6' }}
+            style={{
+              width: 240,
+              height: 310,
+              borderRadius: 150,
+              backgroundColor: colors.surfaceMuted,
+            }}
             resizeMode="cover"
             accessibilityLabel="Your captured selfie"
           />

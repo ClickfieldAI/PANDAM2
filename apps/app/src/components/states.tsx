@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { type ReactNode } from 'react';
 
 import { EmptyState, SkeletonList } from '@pandam/ui';
-import { colors } from '@pandam/ui';
+import { useThemeColors } from '@pandam/ui';
 
 import { ApiError } from '@/lib/api/client';
 
@@ -22,6 +22,8 @@ import { ApiError } from '@/lib/api/client';
  * to the generic line.
  */
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+  const colors = useThemeColors();
+
   const api = error instanceof ApiError ? error : null;
   const network = api?.status === 0;
   const forbidden = api?.status === 401 || api?.status === 403;

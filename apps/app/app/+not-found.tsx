@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import { View } from 'react-native';
 
-import { EmptyState, colors, layout } from '@pandam/ui';
+import { EmptyState, layout, useThemeColors } from '@pandam/ui';
 
 /**
  * The 404.
@@ -14,6 +14,8 @@ import { EmptyState, colors, layout } from '@pandam/ui';
  * message.
  */
 export default function NotFound() {
+  const colors = useThemeColors();
+
   const router = useRouter();
 
   return (

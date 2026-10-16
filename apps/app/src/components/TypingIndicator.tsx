@@ -9,11 +9,13 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Avatar, Reveal, colors, layout, radii, spacing, useMotionOK } from '@pandam/ui';
+import { Avatar, Reveal, layout, radii, spacing, useMotionOK, useThemeColors } from '@pandam/ui';
 
 /** One dot in the "typing" row — fades and lifts a few px, offset from its
  *  neighbours so the three read as a stagger rather than a single pulse. */
 function Dot({ delay }: { delay: number }) {
+  const colors = useThemeColors();
+
   const motionOK = useMotionOK();
   const p = useSharedValue(0);
 
@@ -58,6 +60,8 @@ function Dot({ delay }: { delay: number }) {
  * so it never reserves space when nobody is typing.
  */
 export function TypingIndicator({ name, avatarUri }: { name: string; avatarUri?: string }) {
+  const colors = useThemeColors();
+
   return (
     <Reveal offset={6} style={{ alignSelf: 'flex-start' }}>
       <View

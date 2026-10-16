@@ -13,10 +13,11 @@ import { type Category, type MarketItem } from '@pandam/types';
 import { Avatar, CoverTile, Press, haptic } from '@pandam/ui';
 
 import { SaveHeart } from '@/components/brand/SaveHeart';
-import { M, RedBlob } from '@/components/matches/MatchesUI';
+import { useM, RedBlob } from '@/components/matches/MatchesUI';
 import { mediaSrc, primaryImage } from '@/lib/api/media';
 import { formatMoney, timeAgo } from '@/lib/format';
 import { categoryIcon } from '@/lib/icons';
+import { useThemeColors } from '@pandam/ui';
 
 export const GUTTER = 20;
 export const GRID_GAP = 12;
@@ -26,7 +27,7 @@ const SEMI = 'InterTight_600SemiBold';
 const REG = 'InterTight_400Regular';
 
 /** The colour of the active side: red for HAVE, the app's NEED colour otherwise. */
-const toneColor = (isHave: boolean, need: string) => (isHave ? M.red : need);
+const toneColor = (isHave: boolean, need: string) => (isHave ? '#FF3B2F' : need);
 
 /* ---------------------------------- header --------------------------------- */
 
@@ -71,6 +72,10 @@ export function DiscoverHeader({
   onFilter: () => void;
   onKind: (haveSide: boolean) => void;
 }) {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   const accent = toneColor(isHave, needColor);
   const sides = [
     { have: true, label: 'I HAVE' },
@@ -108,7 +113,7 @@ export function DiscoverHeader({
           height: 48,
           borderRadius: 24,
           borderWidth: 1.4,
-          borderColor: M.ink,
+          borderColor: M.line,
           backgroundColor: M.surface,
           flexDirection: 'row',
           alignItems: 'center',
@@ -122,7 +127,7 @@ export function DiscoverHeader({
           value={query}
           onChangeText={onQuery}
           placeholder={isHave ? 'Search what people have' : 'Search what people need'}
-          placeholderTextColor="#B4B2AC"
+          placeholderTextColor={colors.textMuted}
           autoCapitalize="none"
           returnKeyType="search"
           accessibilityLabel="Search"
@@ -135,7 +140,7 @@ export function DiscoverHeader({
             accessibilityLabel="Clear search"
             onPress={() => onQuery('')}
           >
-            <Ionicons name="close-circle" size={18} color="#9A9892" />
+            <Ionicons name="close-circle" size={18} color={colors.textMuted} />
           </Press>
         ) : null}
         <Press
@@ -164,7 +169,7 @@ export function DiscoverHeader({
           height: 50,
           borderRadius: 25,
           borderWidth: 1.5,
-          borderColor: M.ink,
+          borderColor: M.line,
           backgroundColor: M.track,
           flexDirection: 'row',
           padding: 4,
@@ -228,6 +233,8 @@ export function CategoryTiles({
   onAdd: () => void;
   accent: string;
 }) {
+  const M = useM();
+
   const scroller = useRef<ScrollView>(null);
 
   const tile = (
@@ -326,6 +333,8 @@ export function CategoryTiles({
 /* ------------------------------- listing cards ------------------------------ */
 
 function TradeButton({ accent, compact }: { accent: string; compact?: boolean }) {
+  const colors = useThemeColors();
+
   return (
     <View
       accessibilityElementsHidden
@@ -338,7 +347,7 @@ function TradeButton({ accent, compact }: { accent: string; compact?: boolean })
         borderRadius: 9,
         borderWidth: 1.2,
         borderColor: accent,
-        backgroundColor: '#FFF3F1',
+        backgroundColor: colors.accentSoft,
       }}
     >
       <Ionicons name="swap-horizontal" size={15} color={accent} />
@@ -357,6 +366,10 @@ export function FeatureCard({
   needColor: string;
   onPress: () => void;
 }) {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   const isHave = item.kind === 'listing';
   const accent = toneColor(isHave, needColor);
   const price = item.pricing?.priceAmount;
@@ -472,7 +485,7 @@ export function FeatureCard({
             justifyContent: 'space-between',
             paddingHorizontal: 14,
             paddingVertical: 12,
-            backgroundColor: '#FCFBF8',
+            backgroundColor: colors.surface,
           }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 }}>
@@ -508,6 +521,8 @@ export function GridCard({
   width: number;
   onPress: () => void;
 }) {
+  const M = useM();
+
   const isHave = item.kind === 'listing';
   const accent = toneColor(isHave, needColor);
   const price = item.pricing?.priceAmount;
@@ -633,6 +648,8 @@ export function ResultsRow({
   onPick: (k: SortKey) => void;
   trailing?: ReactNode;
 }) {
+  const M = useM();
+
   return (
     <View style={{ paddingHorizontal: GUTTER, marginTop: 16, zIndex: 5 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>

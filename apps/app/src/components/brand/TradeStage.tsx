@@ -13,7 +13,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Text, colors, palette, radii, spacing, useMotionOK, ALLOW_3D } from '@pandam/ui';
+import { Text, palette, radii, spacing, useMotionOK, ALLOW_3D, useThemeColors } from '@pandam/ui';
 
 import { OrganicShape } from './OrganicShape';
 import { ParticleBurst } from './ParticleBurst';
@@ -46,6 +46,8 @@ export function TradeStage({
   sending: boolean;
   sent?: boolean;
 }) {
+  const colors = useThemeColors();
+
   const motionOK = useMotionOK();
   const giveIn = useSharedValue(give ? 1 : 0);
   const pull = useSharedValue(0);
@@ -158,13 +160,13 @@ export function TradeStage({
     >
       <OrganicShape
         size={240}
-        color={palette.orange50}
+        color={colors.accentSoft}
         rotate={-14}
         style={{ left: -50, top: -30 }}
       />
       <OrganicShape
         size={200}
-        color={palette.concreteSoft}
+        color={colors.surfaceMuted}
         rotate={22}
         style={{ right: -40, bottom: -40 }}
       />

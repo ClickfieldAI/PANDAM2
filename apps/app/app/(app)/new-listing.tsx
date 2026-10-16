@@ -5,13 +5,18 @@ import { Text, View } from 'react-native';
 import { Press, Screen, layout, useToast } from '@pandam/ui';
 
 import { ItemForm } from '@/components/ItemForm';
-import { M } from '@/components/matches/MatchesUI';
+import { useM } from '@/components/matches/MatchesUI';
 import { CornerDecor } from '@/components/profile/ProfileUI';
 import { markSubmitted } from '@/lib/drafts';
 import { useUploadItemImages } from '@/lib/hooks/useMedia';
 import { useCreateItem } from '@/lib/hooks/useMarket';
+import { useThemeColors } from '@pandam/ui';
 
 export default function NewListingScreen() {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   const router = useRouter();
   const create = useCreateItem('listing');
   const uploadImages = useUploadItemImages('listing');
@@ -50,7 +55,7 @@ export default function NewListingScreen() {
             style={{
               fontFamily: 'InterTight_400Regular',
               fontSize: 15,
-              color: '#555',
+              color: colors.textSecondary,
               marginTop: 2,
               marginBottom: 18,
               maxWidth: 330,

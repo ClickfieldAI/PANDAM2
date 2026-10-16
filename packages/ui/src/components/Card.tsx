@@ -1,7 +1,9 @@
 import { type ReactNode } from 'react';
 import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 
-import { colors, radii, shadows, spacing } from '../tokens';
+import { useThemeColors } from '../theme';
+import { radii, shadows, spacing } from '../tokens';
+import { type ThemeColors } from '../tokens';
 
 import { Press } from './Press';
 
@@ -27,29 +29,29 @@ export interface CardProps {
   style?: StyleProp<ViewStyle>;
 }
 
-const TONE_BG: Record<NonNullable<CardProps['tone']>, string> = {
+const makeTONE_BG = (colors: ThemeColors): Record<NonNullable<CardProps['tone']>, string> => ({
   surface: colors.surface,
   accent: colors.accentSoft,
   need: colors.needSoft,
   match: colors.matchSoft,
   muted: colors.surfaceMuted,
-};
+});
 
-const TONE_BORDER: Record<NonNullable<CardProps['tone']>, string> = {
+const makeTONE_BORDER = (colors: ThemeColors): Record<NonNullable<CardProps['tone']>, string> => ({
   surface: colors.border,
   accent: colors.accentBorder,
   need: colors.needBorder,
   match: colors.matchBorder,
   muted: colors.border,
-};
+});
 
-const EDGE_COLOR: Record<NonNullable<CardProps['edge']>, string> = {
+const makeEDGE_COLOR = (colors: ThemeColors): Record<NonNullable<CardProps['edge']>, string> => ({
   accent: colors.accent,
   need: colors.need,
   match: colors.match,
   danger: colors.danger,
   warning: colors.warning,
-};
+});
 
 /**
  * A surface that groups related content.
@@ -72,6 +74,8 @@ export function Card({
   accessibilityLabel,
   style,
 }: CardProps) {
+  const colors = useThemeColors();
+
   // Plain surface cards rest on a faint warm shadow — on cream a border alone
   // reads flat; the soft shadow is what makes the redesign feel tactile.
   const depth: Elevation =
@@ -86,13 +90,13 @@ export function Card({
   const base: StyleProp<ViewStyle> = [
     styles.card,
     {
-      backgroundColor: TONE_BG[tone],
+      backgroundColor: makeTONE_BG(colors)[tone],
       borderRadius: radii[radius],
       borderWidth: bordered ? 1.5 : 0,
-      borderColor: TONE_BORDER[tone],
+      borderColor: makeTONE_BORDER(colors)[tone],
     },
     padded && { padding: spacing.lg },
-    edge && { borderLeftWidth: 4, borderLeftColor: EDGE_COLOR[edge] },
+    edge && { borderLeftWidth: 4, borderLeftColor: makeEDGE_COLOR(colors)[edge] },
     shadows[depth],
     style,
   ];

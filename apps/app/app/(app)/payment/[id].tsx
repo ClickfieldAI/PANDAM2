@@ -14,11 +14,12 @@ import {
   SkeletonList,
   Stack,
   Text,
-  colors,
   layout,
   radii,
   spacing,
   useToast,
+  type ThemeColors,
+  useThemeColors,
 } from '@pandam/ui';
 
 import { AppHeader } from '@/components/AppHeader';
@@ -76,14 +77,17 @@ const STATUS_COPY: Record<
   },
 };
 
-const ICON_COLOR = {
-  info: colors.info,
-  success: colors.accent,
-  warning: colors.warning,
-  neutral: colors.textMuted,
-} as const;
+const makeICON_COLOR = (colors: ThemeColors) =>
+  ({
+    info: colors.info,
+    success: colors.accent,
+    warning: colors.warning,
+    neutral: colors.textMuted,
+  }) as const;
 
 export default function PaymentStatusScreen() {
+  const colors = useThemeColors();
+
   const router = useRouter();
   const toast = useToast();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -176,7 +180,7 @@ export default function PaymentStatusScreen() {
                 {waiting ? (
                   <ActivityIndicator size="small" color={colors.info} />
                 ) : (
-                  <Ionicons name={copy.icon} size={20} color={ICON_COLOR[copy.kind]} />
+                  <Ionicons name={copy.icon} size={20} color={makeICON_COLOR(colors)[copy.kind]} />
                 )}
                 <Text variant="h3">{copy.title}</Text>
               </Row>

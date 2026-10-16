@@ -1,7 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { View } from 'react-native';
 
-import { FloatingObject, Gradient, Text, colors, radii, shadows, spacing } from '@pandam/ui';
+import {
+  FloatingObject,
+  Gradient,
+  Text,
+  radii,
+  shadows,
+  spacing,
+  useThemeColors,
+} from '@pandam/ui';
 
 /**
  * The header on the two unauthenticated screens.
@@ -16,6 +24,8 @@ import { FloatingObject, Gradient, Text, colors, radii, shadows, spacing } from 
  * direction note in `@pandam/ui/tokens`) — it is the product's front door.
  */
 export function AuthHero() {
+  const colors = useThemeColors();
+
   return (
     <Gradient
       token="hero"

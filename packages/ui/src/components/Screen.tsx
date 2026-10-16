@@ -1,8 +1,9 @@
-import { createContext, type ReactNode, useContext } from 'react';
+import { createContext, type ReactNode, type Ref, useContext } from 'react';
 import { RefreshControl, ScrollView, type StyleProp, View, type ViewStyle } from 'react-native';
 import { type Edge, SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, layout, palette, spacing } from '../tokens';
+import { useThemeColors } from '../theme';
+import { layout, palette, spacing } from '../tokens';
 
 /**
  * App-wide default backdrop. The app provides one (its ambient background) at
@@ -33,6 +34,8 @@ export interface ScreenProps {
    * Must be non-interactive; it never affects layout.
    */
   backdrop?: ReactNode;
+  /** Ref to the scroll view (when `scroll`), so callers can scroll content into view. */
+  scrollRef?: Ref<ScrollView>;
 }
 
 /**
@@ -54,10 +57,14 @@ export function Screen({
   refreshing = false,
   footer,
   tabBarInset = false,
-  background = colors.background,
+  background: backgroundProp,
   contentStyle,
   backdrop,
+  scrollRef,
 }: ScreenProps) {
+  const colors = useThemeColors();
+  const background = backgroundProp ?? colors.background;
+
   const fallback = useContext(DefaultBackdrop);
   const layer =
     backdrop !== undefined ? backdrop : background === colors.background ? fallback : null;
@@ -73,6 +80,7 @@ export function Screen({
       {layer}
       {scroll ? (
         <ScrollView
+          ref={scrollRef}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ flexGrow: 1, alignItems: 'stretch' }}

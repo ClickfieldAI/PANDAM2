@@ -12,7 +12,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Text, colors, palette, radii, spacing, useMotionOK, ALLOW_3D } from '@pandam/ui';
+import { Text, palette, radii, spacing, useMotionOK, ALLOW_3D, useThemeColors } from '@pandam/ui';
 
 import { OrganicShape } from './OrganicShape';
 import { ParticleBurst } from './ParticleBurst';
@@ -71,6 +71,8 @@ export function MatchMoment({
   themSeed: string;
   them: string;
 }) {
+  const colors = useThemeColors();
+
   const motionOK = useMotionOK();
   const meet = useSharedValue(motionOK ? 0 : 1);
   const token = useSharedValue(motionOK ? 0 : 1);
@@ -108,10 +110,10 @@ export function MatchMoment({
         overflow: 'hidden',
       }}
     >
-      <OrganicShape size={300} color={palette.orange50} rotate={-10} style={{ top: 10 }} />
+      <OrganicShape size={300} color={colors.accentSoft} rotate={-10} style={{ top: 10 }} />
       <OrganicShape
         size={160}
-        color={palette.orange50}
+        color={colors.accentSoft}
         rotate={20}
         style={{ right: 10, top: 150 }}
       />

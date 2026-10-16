@@ -21,11 +21,11 @@ import {
   SkeletonList,
   Stack,
   Text,
-  colors,
   layout,
   radii,
   shadows,
   spacing,
+  useThemeColors,
 } from '@pandam/ui';
 
 import { ErrorState } from '@/components/states';
@@ -76,6 +76,8 @@ function PhotoTag({ children }: { children: React.ReactNode }) {
 }
 
 export function ItemDetail({ kind, id }: { kind: MarketKind; id: string }) {
+  const colors = useThemeColors();
+
   const router = useRouter();
   const { user } = useSession();
   const liveQuery = useItem(kind, id);

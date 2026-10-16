@@ -11,10 +11,10 @@ import {
   Press,
   Row,
   Text,
-  colors,
   radii,
   shadows,
   spacing,
+  useThemeColors,
 } from '@pandam/ui';
 
 import { mediaSrc } from '@/lib/api/media';
@@ -35,6 +35,8 @@ function Leg({
   /** The other side's record this leg satisfies. */
   mirrors: string;
 }) {
+  const colors = useThemeColors();
+
   const give = direction === 'give';
   const tint = give ? colors.accent : colors.need;
   const soft = give ? colors.accentSoft : colors.needSoft;
@@ -111,6 +113,8 @@ export interface MatchCardProps {
  * feel like an event if nothing else on the screen is shouting too.
  */
 export function MatchCard({ match, onPress }: MatchCardProps) {
+  const colors = useThemeColors();
+
   const them = match.them.user.displayName;
 
   return (

@@ -4,10 +4,19 @@ import { Alert, Image, Platform, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { type OfferView } from '@pandam/types';
-import { Avatar, Notice, Press, Screen, SkeletonList, colors, haptic, useToast } from '@pandam/ui';
+import {
+  Avatar,
+  Notice,
+  Press,
+  Screen,
+  SkeletonList,
+  haptic,
+  useToast,
+  useThemeColors,
+} from '@pandam/ui';
 
 import { AppHeader } from '@/components/AppHeader';
-import { M } from '@/components/matches/MatchesUI';
+import { useM } from '@/components/matches/MatchesUI';
 import { CornerDecor } from '@/components/profile/ProfileUI';
 import { ErrorState } from '@/components/states';
 import { StatusPill } from '@/components/TradeContextCard';
@@ -43,6 +52,10 @@ function subtitleFor(o: OfferView): string {
 }
 
 export default function OfferDetailScreen() {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   const router = useRouter();
   const toast = useToast();
   const insets = useSafeAreaInsets();
@@ -160,7 +173,7 @@ export default function OfferDetailScreen() {
               style={{
                 fontFamily: 'InterTight_400Regular',
                 fontSize: 16,
-                color: '#555',
+                color: colors.textSecondary,
                 marginTop: 2,
               }}
             >
@@ -178,7 +191,11 @@ export default function OfferDetailScreen() {
                   {person.displayName}
                 </Text>
                 <Text
-                  style={{ fontFamily: 'InterTight_400Regular', fontSize: 14.5, color: '#666' }}
+                  style={{
+                    fontFamily: 'InterTight_400Regular',
+                    fontSize: 14.5,
+                    color: colors.textMuted,
+                  }}
                 >
                   {o.isMine ? 'You sent this' : 'Sent to you'} · {timeAgo(o.createdAt)}
                 </Text>
@@ -212,7 +229,7 @@ export default function OfferDetailScreen() {
                       width: '100%',
                       aspectRatio: 4 / 3,
                       borderRadius: 8,
-                      backgroundColor: '#E4E2DD',
+                      backgroundColor: colors.surfaceMuted,
                     }}
                     resizeMode="cover"
                     accessibilityLabel="Photo attached to this offer"
@@ -255,7 +272,7 @@ export default function OfferDetailScreen() {
                   fontFamily: 'InterTight_400Regular',
                   fontSize: 13.5,
                   lineHeight: 19,
-                  color: '#666',
+                  color: colors.textMuted,
                   marginTop: 16,
                 }}
               >
@@ -350,7 +367,7 @@ export default function OfferDetailScreen() {
             style={{
               fontFamily: 'InterTight_600SemiBold',
               fontSize: 15,
-              color: '#666',
+              color: colors.textMuted,
               textAlign: 'center',
             }}
           >

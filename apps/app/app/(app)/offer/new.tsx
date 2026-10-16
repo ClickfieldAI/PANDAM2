@@ -18,11 +18,11 @@ import {
   SkeletonList,
   Stack,
   Text,
-  colors,
   layout,
   radii,
   spacing,
   useMotionOK,
+  useThemeColors,
 } from '@pandam/ui';
 
 import { AppHeader } from '@/components/AppHeader';
@@ -53,6 +53,8 @@ function SelectableItem({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const colors = useThemeColors();
+
   return (
     <Press
       scale="none"
@@ -127,6 +129,8 @@ const isRealId = (id: string) => !id.startsWith('demo-');
  * trade conversation with the offer), so the success state offers it.
  */
 export default function NewOfferScreen() {
+  const colors = useThemeColors();
+
   const router = useRouter();
   const params = useLocalSearchParams<{ requestedListingId?: string; requestedNeedId?: string }>();
   const kind: 'listing' | 'need' = params.requestedNeedId ? 'need' : 'listing';

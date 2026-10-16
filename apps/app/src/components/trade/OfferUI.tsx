@@ -9,7 +9,8 @@ import { Text, View } from 'react-native';
 
 import { Press } from '@pandam/ui';
 
-import { M } from '@/components/matches/MatchesUI';
+import { useM } from '@/components/matches/MatchesUI';
+import { useThemeColors } from '@pandam/ui';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 const BOLD = 'InterTight_700Bold';
@@ -27,6 +28,10 @@ export function OfferItemCard({
   meta: string[];
   tone: 'give' | 'get';
 }) {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   const give = tone === 'give';
   return (
     <View
@@ -34,21 +39,25 @@ export function OfferItemCard({
         borderRadius: 10,
         borderWidth: 1.4,
         borderColor: give ? M.red : M.ink,
-        backgroundColor: give ? '#FDE7E3' : '#ECEBE7',
+        backgroundColor: give ? M.pink : M.track,
         paddingHorizontal: 18,
         paddingVertical: 16,
         gap: 4,
       }}
     >
-      <Text style={{ fontFamily: REG, fontSize: 15, color: give ? M.red : '#555' }}>{label}</Text>
+      <Text style={{ fontFamily: REG, fontSize: 15, color: give ? M.red : M.secondary }}>
+        {label}
+      </Text>
       <Text style={{ fontFamily: BOLD, fontSize: 24, lineHeight: 29, color: M.ink }}>{title}</Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 }}>
         {meta.map((m, i) => (
           <View key={m} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             {i > 0 ? (
-              <View style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: '#8A8882' }} />
+              <View
+                style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: colors.textMuted }}
+              />
             ) : null}
-            <Text style={{ fontFamily: REG, fontSize: 15, color: '#666' }}>{m}</Text>
+            <Text style={{ fontFamily: REG, fontSize: 15, color: colors.textMuted }}>{m}</Text>
           </View>
         ))}
       </View>
@@ -57,9 +66,11 @@ export function OfferItemCard({
 }
 
 export function SwapDivider() {
+  const M = useM();
+
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 14 }}>
-      <View style={{ flex: 1, height: 1.2, backgroundColor: M.ink }} />
+      <View style={{ flex: 1, height: 1.2, backgroundColor: M.inkFill }} />
       <View
         style={{
           width: 46,
@@ -67,7 +78,7 @@ export function SwapDivider() {
           borderRadius: 23,
           marginHorizontal: 10,
           borderWidth: 1.4,
-          borderColor: M.ink,
+          borderColor: M.line,
           backgroundColor: M.bg,
           alignItems: 'center',
           justifyContent: 'center',
@@ -75,25 +86,29 @@ export function SwapDivider() {
       >
         <Ionicons name="swap-vertical" size={24} color={M.red} />
       </View>
-      <View style={{ flex: 1, height: 1.2, backgroundColor: M.ink }} />
+      <View style={{ flex: 1, height: 1.2, backgroundColor: M.inkFill }} />
     </View>
   );
 }
 
 export function MessageCard({ label, children }: { label: string; children: ReactNode }) {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   return (
     <View
       style={{
         borderRadius: 10,
         borderWidth: 1.4,
-        borderColor: M.ink,
-        backgroundColor: '#FBFAF7',
+        borderColor: M.line,
+        backgroundColor: colors.surface,
         paddingHorizontal: 18,
         paddingVertical: 16,
         gap: 8,
       }}
     >
-      <Text style={{ fontFamily: SEMI, fontSize: 15, color: '#666' }}>{label}</Text>
+      <Text style={{ fontFamily: SEMI, fontSize: 15, color: colors.textMuted }}>{label}</Text>
       {children}
     </View>
   );
@@ -112,6 +127,10 @@ export function ActionButton({
   kind: 'primary' | 'outline' | 'text';
   loading?: boolean;
 }) {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   if (kind === 'text') {
     return (
       <Press
@@ -124,7 +143,7 @@ export function ActionButton({
         hitSlop={8}
         style={{ alignSelf: 'center', paddingVertical: 10 }}
       >
-        <Text style={{ fontFamily: SEMI, fontSize: 16, color: '#555' }}>{label}</Text>
+        <Text style={{ fontFamily: SEMI, fontSize: 16, color: colors.textSecondary }}>{label}</Text>
       </Press>
     );
   }
@@ -142,8 +161,8 @@ export function ActionButton({
         height: 56,
         borderRadius: 9,
         borderWidth: 1.4,
-        borderColor: primary ? '#3A1410' : M.ink,
-        backgroundColor: primary ? M.red : '#FBFAF7',
+        borderColor: primary ? '#3A1410' : M.line,
+        backgroundColor: primary ? M.red : M.surface,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -161,6 +180,10 @@ export function ActionButton({
 
 /** Green confirmation row ("Trade Accepted"), tappable when it has a destination. */
 export function AcceptedPanel({ onPress }: { onPress?: () => void }) {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   return (
     <Press
       haptic="light"
@@ -172,7 +195,7 @@ export function AcceptedPanel({ onPress }: { onPress?: () => void }) {
       style={{
         height: 58,
         borderRadius: 9,
-        backgroundColor: '#D9EEDD',
+        backgroundColor: colors.successSoft,
         paddingHorizontal: 16,
         flexDirection: 'row',
         alignItems: 'center',
@@ -180,10 +203,10 @@ export function AcceptedPanel({ onPress }: { onPress?: () => void }) {
       }}
     >
       <Ionicons name="shield-checkmark" size={28} color={M.red} />
-      <Text style={{ flex: 1, fontFamily: SEMI, fontSize: 18, color: '#1F8A44' }}>
+      <Text style={{ flex: 1, fontFamily: SEMI, fontSize: 18, color: colors.successText }}>
         Trade Accepted
       </Text>
-      {onPress ? <Ionicons name="chevron-forward" size={20} color="#555" /> : null}
+      {onPress ? <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} /> : null}
     </Press>
   );
 }
@@ -196,6 +219,8 @@ export function BottomPanel({
   children: ReactNode;
   bottomInset: number;
 }) {
+  const colors = useThemeColors();
+
   return (
     <View
       style={{
@@ -204,8 +229,8 @@ export function BottomPanel({
         borderTopWidth: 1,
         borderLeftWidth: 1,
         borderRightWidth: 1,
-        borderColor: '#D9D9D9',
-        backgroundColor: '#FBFAF7',
+        borderColor: colors.borderSoft,
+        backgroundColor: colors.surface,
         paddingHorizontal: 20,
         paddingTop: 22,
         paddingBottom: bottomInset + 14,

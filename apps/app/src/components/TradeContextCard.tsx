@@ -4,8 +4,9 @@ import { Image, Text, View } from 'react-native';
 
 import { Press, Reveal } from '@pandam/ui';
 
-import { M } from '@/components/matches/MatchesUI';
+import { useM } from '@/components/matches/MatchesUI';
 import { mediaSrc } from '@/lib/api/media';
+import { type ThemeColors, useThemeColors } from '@pandam/ui';
 
 /** Status vocabulary shared with the offer screen (see `StatusPill`). */
 export const OFFER_STATUS_LABEL: Record<OfferStatus, string> = {
@@ -16,17 +17,20 @@ export const OFFER_STATUS_LABEL: Record<OfferStatus, string> = {
   expired: 'Expired',
 };
 
-const PILL: Record<OfferStatus, { bg: string; fg: string; dot: string }> = {
-  pending: { bg: '#FDF1D6', fg: '#9A6200', dot: '#F59E0B' },
-  accepted: { bg: '#DDF3E4', fg: '#1F8A44', dot: '#22C55E' },
-  rejected: { bg: '#FDE3E3', fg: '#B42318', dot: '#EF4444' },
-  cancelled: { bg: '#E7E5E0', fg: '#555555', dot: '#9A9892' },
-  expired: { bg: '#E7E5E0', fg: '#555555', dot: '#9A9892' },
-};
+const makePill = (
+  colors: ThemeColors,
+): Record<OfferStatus, { bg: string; fg: string; dot: string }> => ({
+  pending: { bg: colors.warningSoft, fg: colors.warningText, dot: colors.warning },
+  accepted: { bg: colors.successSoft, fg: colors.successText, dot: colors.success },
+  rejected: { bg: colors.dangerSoft, fg: colors.dangerText, dot: colors.danger },
+  cancelled: { bg: colors.surfaceMuted, fg: colors.textSecondary, dot: colors.textMuted },
+  expired: { bg: colors.surfaceMuted, fg: colors.textSecondary, dot: colors.textMuted },
+});
 
 /** The small rounded status badge with a dot (Accepted = green, as in the reference). */
 export function StatusPill({ status, label }: { status: OfferStatus; label?: string }) {
-  const c = PILL[status];
+  const colors = useThemeColors();
+  const c = makePill(colors)[status];
   return (
     <View
       style={{
@@ -70,6 +74,8 @@ export function tradeSubtitle(offer: OfferView | undefined): string {
  * never a stand-in product photo.
  */
 function TradeThumb({ offer }: { offer: OfferView }) {
+  const colors = useThemeColors();
+
   const src = mediaSrc(offer.requested.imageUrl ?? offer.imageUrl ?? undefined);
   if (!src) return null;
   return (
@@ -79,7 +85,7 @@ function TradeThumb({ offer }: { offer: OfferView }) {
         height: 44,
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: '#D9D9D9',
+        borderColor: colors.borderSoft,
         overflow: 'hidden',
       }}
     >
@@ -94,6 +100,10 @@ function TradeThumb({ offer }: { offer: OfferView }) {
  * full offer. Bordered card with a pale-pink swap tile, per the Pandam design.
  */
 export function TradeContextCard({ offer, onOpen }: { offer: OfferView; onOpen: () => void }) {
+  const M = useM();
+
+  const colors = useThemeColors();
+
   const label = offer.requestedKind === 'need' ? 'OFFER FOR A REQUEST' : 'TRADE OFFER';
 
   return (
@@ -110,8 +120,8 @@ export function TradeContextCard({ offer, onOpen }: { offer: OfferView; onOpen: 
           padding: 14,
           borderRadius: 12,
           borderWidth: 1.4,
-          borderColor: M.ink,
-          backgroundColor: '#FBFAF7',
+          borderColor: M.line,
+          backgroundColor: colors.surface,
         }}
       >
         <View
@@ -134,7 +144,7 @@ export function TradeContextCard({ offer, onOpen }: { offer: OfferView; onOpen: 
                 fontFamily: 'InterTight_600SemiBold',
                 fontSize: 12,
                 letterSpacing: 0.6,
-                color: '#555',
+                color: colors.textSecondary,
               }}
             >
               {label}
@@ -149,7 +159,7 @@ export function TradeContextCard({ offer, onOpen }: { offer: OfferView; onOpen: 
           </Text>
           <Text
             numberOfLines={1}
-            style={{ fontFamily: 'InterTight_400Regular', fontSize: 14, color: '#666' }}
+            style={{ fontFamily: 'InterTight_400Regular', fontSize: 14, color: colors.textMuted }}
           >
             {offer.isMine ? 'You offer' : 'They offer'}: {offer.offered.title}
           </Text>

@@ -1,7 +1,9 @@
 import { type ReactNode } from 'react';
 import { type StyleProp, type ViewStyle } from 'react-native';
 
-import { colors, layout, radii } from '../tokens';
+import { useThemeColors } from '../theme';
+import { layout, radii } from '../tokens';
+import { type ThemeColors } from '../tokens';
 
 import { Press } from './Press';
 
@@ -16,10 +18,12 @@ export interface IconButtonProps {
   style?: StyleProp<ViewStyle>;
 }
 
-const SPEC: Record<
+const makeSPEC = (
+  colors: ThemeColors,
+): Record<
   NonNullable<IconButtonProps['variant']>,
   { bg: string; hover: string; pressed: string; border?: string }
-> = {
+> => ({
   plain: {
     bg: 'transparent',
     hover: colors.surfaceMuted,
@@ -46,7 +50,7 @@ const SPEC: Record<
     hover: 'rgba(18,22,25,0.48)',
     pressed: 'rgba(18,22,25,0.56)',
   },
-};
+});
 
 /**
  * A round tap target wrapping any icon node.
@@ -64,6 +68,8 @@ export function IconButton({
   disabled,
   style,
 }: IconButtonProps) {
+  const colors = useThemeColors();
+
   return (
     <Press
       scale="lg"
@@ -80,16 +86,16 @@ export function IconButton({
           borderRadius: radii.pill,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: SPEC[variant].bg,
-          borderWidth: SPEC[variant].border ? 1 : 0,
-          borderColor: SPEC[variant].border ?? 'transparent',
+          backgroundColor: makeSPEC(colors)[variant].bg,
+          borderWidth: makeSPEC(colors)[variant].border ? 1 : 0,
+          borderColor: makeSPEC(colors)[variant].border ?? 'transparent',
           opacity: disabled ? 0.4 : 1,
         },
         style,
       ]}
       states={{
-        hover: { backgroundColor: SPEC[variant].hover },
-        pressed: { backgroundColor: SPEC[variant].pressed },
+        hover: { backgroundColor: makeSPEC(colors)[variant].hover },
+        pressed: { backgroundColor: makeSPEC(colors)[variant].pressed },
       }}
     >
       {icon}
