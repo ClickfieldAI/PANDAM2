@@ -1,0 +1,21 @@
+# Switches appearance and signs out. Run after login-and-tabs.yaml state (no clearState).
+# NOT RUN YET: written from the source, adjust selectors on first run.
+appId: com.pandam.app
+---
+- launchApp
+- tapOn: 'Profile'
+- scrollUntilVisible:
+    element: 'Security'
+- tapOn: 'Security'
+- scrollUntilVisible:
+    element: 'Dark'
+- tapOn: 'Dark'
+- tapOn: 'Light'
+- tapOn: 'System'
+- back
+- scrollUntilVisible:
+    element: 'Sign out'
+- tapOn: 'Sign out'
+# Confirmation dialog on native.
+- tapOn: 'Sign out'
+- assertVisible: 'Email address'

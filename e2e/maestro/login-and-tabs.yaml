@@ -1,0 +1,29 @@
+# Signs in with a test account and visits every tab.
+# NOT RUN YET: written from the source, adjust selectors on first run.
+# Usage: EMAIL=… PASSWORD=… maestro test e2e/maestro/login-and-tabs.yaml
+appId: com.pandam.app
+env:
+  EMAIL: ${EMAIL}
+  PASSWORD: ${PASSWORD}
+---
+- launchApp:
+    clearState: true
+- tapOn: 'Email address'
+- inputText: ${EMAIL}
+- tapOn: 'Password'
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn: 'Sign in'
+# First launch may offer the tour; skip it if it shows.
+- runFlow:
+    when:
+      visible: 'Skip tour'
+    commands:
+      - tapOn: 'Skip tour'
+- assertVisible: 'Home'
+- tapOn: 'Discover'
+- assertVisible: 'Discover'
+- tapOn: 'Matches'
+- assertVisible: 'Matches'
+- tapOn: 'Profile'
+- assertVisible: 'Blocked people'

@@ -14,8 +14,8 @@ wallet — a good is traded directly for a good.
 > recipient accepts — declining or cancelling leaves no chat at all) with
 > accept/decline, barter transactions,
 > reviews, notifications, and abuse reports/disputes; real-money purchase of a
-> `sale`/`both` listing via Razorpay. **Not** built: disputes/admin
-> resolution UI, and the permanent V1 exclusions (AI matching, credits,
+> `sale`/`both` listing via Razorpay. Admin tools (roles, suspension, takedown, report review, read-only
+> transaction inspection) exist. **Not** built: dispute resolution tooling, and the permanent V1 exclusions (AI matching, credits,
 > currency beyond the optional Razorpay purchase path). See
 > [`docs/architecture/overview.md`](docs/architecture/overview.md).
 >

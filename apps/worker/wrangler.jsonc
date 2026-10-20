@@ -94,10 +94,42 @@
   // },
 
   // ---------------------------------------------------------------------------
-  // Per-environment overrides (`env.preview`, `env.production`) are added in a
-  // later phase, together with the real bindings. Wrangler v4 warns on every
-  // command when named environments exist but none is selected, so they are
-  // intentionally omitted until they carry real configuration. Deploys will
-  // then use `wrangler deploy --env <name>`.
+  // Named environments. Wrangler does NOT inherit bindings or vars into a named
+  // environment, so each one restates everything it needs. Deploy with
+  // `wrangler deploy --env staging` (Worker name becomes `pandam-api-staging`).
+  // The top-level config above stays the LOCAL development setup.
+  //
+  // `staging`: a separate Worker, D1 database and R2 bucket so nothing here can
+  // touch production data. PANDAM_ENV=preview keeps the demo-only identity
+  // verification available for testing; production (added later) must use
+  // "production". Secrets are NOT in this file: set them with
+  // `wrangler secret put NAME --env staging`.
   // ---------------------------------------------------------------------------
+  "env": {
+    "staging": {
+      "workers_dev": true,
+      "vars": {
+        "PANDAM_ENV": "preview",
+        // Exact browser origins allowed to send credentialed requests. Native apps are not
+        // affected by CORS. Fill in only if a web build is served from a staging origin.
+        "CORS_ORIGINS": "",
+        "RELEASE": "staging"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "pandam-db-staging",
+          // Filled in from the output of `wrangler d1 create pandam-db-staging`.
+          "database_id": "a6d498ca-c729-4065-b7a8-43585363d15c",
+          "migrations_dir": "../../packages/database/migrations"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "MEDIA",
+          "bucket_name": "pandam-media-staging"
+        }
+      ]
+    }
+  }
 }
