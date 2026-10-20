@@ -13,21 +13,18 @@ import { type BarterTransactionView, type ItemRef, type OwnerRef } from '@pandam
 import { transactionStatusUpdateSchema } from '@pandam/validation';
 import { type Context, Hono } from 'hono';
 
-import { barterTransition, type BarterAction } from '../../../domain/barter';
 import { ApiError, sendOk } from '../../../lib/http';
 import { coverImageUrl, toOwnerRef } from '../../../lib/serialize';
 import { parseBody } from '../../../lib/validate';
 import { authMiddleware, getAuth, requireAuth } from '../../../middleware/auth';
-import { notify } from '../../../services/notify';
+import {
+  cancelTransaction,
+  confirmTransaction,
+  startLegacyTransaction,
+} from '../../../services/barter';
 import { type AppEnv } from '../../../types';
 
 export const transactionsRoute = new Hono<AppEnv>();
-
-const ACTION_TO_BARTER_ACTION: Record<'start' | 'complete' | 'cancel', BarterAction> = {
-  start: 'start',
-  complete: 'complete',
-  cancel: 'cancel',
-};
 
 transactionsRoute.get('/', authMiddleware, requireAuth, async (c) => {
   const { user } = getAuth(c);
@@ -62,25 +59,17 @@ transactionsRoute.get('/:id', authMiddleware, requireAuth, async (c) => {
 transactionsRoute.post('/:id/status', authMiddleware, requireAuth, async (c) => {
   const { user } = getAuth(c);
   const { repos } = c.get('ctx');
-  const t = await repos.barterTransactions.findById(c.req.param('id'));
-  if (!t || (t.initiatedByUserId !== user.id && t.counterpartyUserId !== user.id)) {
-    throw new ApiError('not_found', 'That transaction does not exist.');
-  }
+  const id = c.req.param('id');
   const { action } = await parseBody(c, transactionStatusUpdateSchema);
-  const transition = barterTransition(t.status, ACTION_TO_BARTER_ACTION[action]);
-  if (!transition.ok) {
-    throw new ApiError('unprocessable', transition.error.message);
-  }
-  await repos.barterTransactions.applyStatus(t.id, transition.next);
 
-  const other = t.initiatedByUserId === user.id ? t.counterpartyUserId : t.initiatedByUserId;
-  await notify(c, {
-    userId: other,
-    type: 'transaction_updated',
-    data: { transactionId: t.id, status: transition.next },
-  });
+  // Rules, compare-and-swap writes and notifications live in services/barter.ts.
+  // 'complete' is the legacy name for 'confirm': it can never complete a trade
+  // on one party's word — both parties must confirm.
+  if (action === 'cancel') await cancelTransaction(c, id, user.id);
+  else if (action === 'start') await startLegacyTransaction(c, id, user.id);
+  else await confirmTransaction(c, id, user.id);
 
-  const updated = await repos.barterTransactions.findById(t.id);
+  const updated = await repos.barterTransactions.findById(id);
   return sendOk(c, { transaction: await hydrate(c, updated!, user.id) });
 });
 
@@ -92,6 +81,8 @@ async function hydrate(
     offerId: string;
     initiatedByUserId: string;
     counterpartyUserId: string;
+    initiatorConfirmedAt: number | null;
+    counterpartyConfirmedAt: number | null;
     completedAt: number | null;
     cancelledAt: number | null;
     createdAt: number;
@@ -151,6 +142,8 @@ async function hydrate(
   }
 
   const reviewed = await repos.reviews.findByTransactionAndReviewer(t.id, meId);
+  const events = await repos.barterEngine.listEvents(t.id);
+  const iAmInitiator = t.initiatedByUserId === meId;
 
   return {
     id: t.id,
@@ -160,6 +153,14 @@ async function hydrate(
     youGave,
     youGot,
     reviewedByMe: reviewed !== null,
+    confirmedByMe: (iAmInitiator ? t.initiatorConfirmedAt : t.counterpartyConfirmedAt) !== null,
+    confirmedByCounterparty:
+      (iAmInitiator ? t.counterpartyConfirmedAt : t.initiatorConfirmedAt) !== null,
+    events: events.map((e) => ({
+      type: e.type,
+      actorIsMe: e.actorUserId === null ? null : e.actorUserId === meId,
+      createdAt: e.createdAt,
+    })),
     completedAt: t.completedAt,
     cancelledAt: t.cancelledAt,
     createdAt: t.createdAt,

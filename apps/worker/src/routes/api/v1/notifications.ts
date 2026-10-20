@@ -2,7 +2,9 @@
  * `/api/v1/notifications` — per-user notification feed, read state, and Expo
  * push registration. Email delivery is still a later phase.
  *
- *   GET  /               the caller's notifications (optionally `?unread=true`)
+ *   GET  /               a page of the caller's notifications (`?unread=true&limit=&cursor=`)
+ *   GET  /unread-count   just the badge number
+ *   GET|PUT /preferences push / listing-alert switches
  *   POST /read-all       mark every notification read
  *   POST /:id/read       mark one notification read
  *   POST /tokens         register this device for push
@@ -13,7 +15,7 @@
  * the interruption.
  */
 import { type NotificationView } from '@pandam/types';
-import { registerPushTokenSchema } from '@pandam/validation';
+import { notificationPreferencesSchema, registerPushTokenSchema } from '@pandam/validation';
 import { Hono } from 'hono';
 
 import { ApiError, sendOk } from '../../../lib/http';
@@ -23,27 +25,85 @@ import { type AppEnv } from '../../../types';
 
 export const notificationsRoute = new Hono<AppEnv>();
 
+const PAGE_DEFAULT = 30;
+const PAGE_MAX = 100;
+
+const encodeCursor = (n: { createdAt: number; id: string }) => `${n.createdAt}_${n.id}`;
+function decodeCursor(raw: string | undefined) {
+  if (!raw) return undefined;
+  const m = /^(\d{1,15})_(ntf_[0-9a-f]{32})$/.exec(raw);
+  if (!m) throw new ApiError('validation_error', 'That cursor is not valid.');
+  return { createdAt: Number(m[1]), id: m[2]! };
+}
+
+function safeData(raw: string | null): Record<string, string> {
+  if (!raw) return {};
+  try {
+    const v: unknown = JSON.parse(raw);
+    return v && typeof v === 'object' ? (v as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+
 notificationsRoute.get('/', authMiddleware, requireAuth, async (c) => {
   const { user } = getAuth(c);
   const { repos } = c.get('ctx');
   const unreadOnly = c.req.query('unread') === 'true';
-  const rows = await repos.notifications.listForUser(user.id, unreadOnly);
-  const items: NotificationView[] = rows.map((n) => ({
+  const limitRaw = c.req.query('limit');
+  const limit = Math.min(
+    PAGE_MAX,
+    Math.max(
+      1,
+      limitRaw === undefined ? PAGE_DEFAULT : Number.parseInt(limitRaw, 10) || PAGE_DEFAULT,
+    ),
+  );
+  const before = decodeCursor(c.req.query('cursor'));
+  // One extra row tells us whether there is another page.
+  const rows = await repos.notifications.listPage(user.id, {
+    unreadOnly,
+    limit: limit + 1,
+    before,
+  });
+  const page = rows.slice(0, limit);
+  const items: NotificationView[] = page.map((n) => ({
     id: n.id,
     type: n.type,
-    data: n.data ? (JSON.parse(n.data) as Record<string, string>) : {},
+    data: safeData(n.data),
+    title: n.title,
+    body: n.body,
     read: n.readAt !== null,
     createdAt: n.createdAt,
   }));
-  return sendOk(c, { items });
+  return sendOk(c, {
+    items,
+    nextCursor: rows.length > limit && page.length ? encodeCursor(page[page.length - 1]!) : null,
+    unreadCount: await repos.notifications.unreadCount(user.id),
+  });
+});
+
+notificationsRoute.get('/unread-count', authMiddleware, requireAuth, async (c) => {
+  const { user } = getAuth(c);
+  return sendOk(c, { unreadCount: await c.get('ctx').repos.notifications.unreadCount(user.id) });
+});
+
+notificationsRoute.get('/preferences', authMiddleware, requireAuth, async (c) => {
+  const { user } = getAuth(c);
+  return sendOk(c, { preferences: await c.get('ctx').repos.notifications.getPreferences(user.id) });
+});
+
+notificationsRoute.put('/preferences', authMiddleware, requireAuth, async (c) => {
+  const { user } = getAuth(c);
+  const patch = await parseBody(c, notificationPreferencesSchema);
+  const preferences = await c.get('ctx').repos.notifications.setPreferences(user.id, patch);
+  return sendOk(c, { preferences });
 });
 
 notificationsRoute.post('/read-all', authMiddleware, requireAuth, async (c) => {
   const { user } = getAuth(c);
   const { repos } = c.get('ctx');
-  const unread = await repos.notifications.listForUser(user.id, true);
-  await Promise.all(unread.map((n) => repos.notifications.markRead(n.id)));
-  return sendOk(c, { read: unread.length });
+  const read = await repos.notifications.markAllRead(user.id);
+  return sendOk(c, { read, unreadCount: 0 });
 });
 
 /**
@@ -71,10 +131,8 @@ notificationsRoute.delete('/tokens', authMiddleware, requireAuth, async (c) => {
 notificationsRoute.post('/:id/read', authMiddleware, requireAuth, async (c) => {
   const { user } = getAuth(c);
   const { repos } = c.get('ctx');
-  const notification = await repos.notifications.findById(c.req.param('id'));
-  if (!notification || notification.userId !== user.id) {
-    throw new ApiError('not_found', 'That notification does not exist.');
-  }
-  await repos.notifications.markRead(notification.id);
-  return sendOk(c, { read: true });
+  // Scoped to the caller inside the repository: someone else's id is simply "not found".
+  const notification = await repos.notifications.markReadForUser(c.req.param('id'), user.id);
+  if (!notification) throw new ApiError('not_found', 'That notification does not exist.');
+  return sendOk(c, { read: true, unreadCount: await repos.notifications.unreadCount(user.id) });
 });

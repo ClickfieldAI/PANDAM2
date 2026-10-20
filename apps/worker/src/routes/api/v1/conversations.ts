@@ -26,6 +26,7 @@ import { mediaUrl, readUploadedImage, requireMedia } from '../../../lib/media';
 import { toOwnerRef } from '../../../lib/serialize';
 import { parseBody } from '../../../lib/validate';
 import { authMiddleware, getAuth, requireAuth } from '../../../middleware/auth';
+import { assertCanInteract } from '../../../services/blocks';
 import { notify } from '../../../services/notify';
 import { type AppEnv } from '../../../types';
 
@@ -74,23 +75,60 @@ conversationsRoute.post('/:id/read', authMiddleware, requireAuth, async (c) => {
   return sendOk(c, { read: true });
 });
 
+/**
+ * One message as the caller sees it. For the caller's OWN messages it adds the
+ * retry id they chose and whether every other participant has read up to it —
+ * evidence taken from the other person's read marker, never assumed. Other
+ * people's messages carry neither, so a reader never learns anything about
+ * the sender's app, and nobody's read marker is exposed raw.
+ */
+function toMessageView(
+  m: {
+    id: string;
+    conversationId: string;
+    senderId: string;
+    body: string;
+    imageKey: string | null;
+    clientId: string | null;
+    createdAt: number;
+    editedAt: number | null;
+  },
+  meId: string,
+  participants: { userId: string; lastReadAt: number | null }[],
+): MessageView {
+  const mine = m.senderId === meId;
+  const others = participants.filter((p) => p.userId !== meId);
+  return {
+    id: m.id,
+    conversationId: m.conversationId,
+    senderId: m.senderId,
+    isMine: mine,
+    body: m.body,
+    imageUrl: m.imageKey ? mediaUrl(m.imageKey) : null,
+    createdAt: m.createdAt,
+    editedAt: m.editedAt,
+    ...(mine
+      ? {
+          clientId: m.clientId,
+          readByRecipient:
+            others.length > 0 &&
+            others.every((p) => p.lastReadAt !== null && p.lastReadAt >= m.createdAt),
+        }
+      : {}),
+  };
+}
+
 conversationsRoute.get('/:id/messages', authMiddleware, requireAuth, async (c) => {
   const { user } = getAuth(c);
   const { repos } = c.get('ctx');
   const conversation = await requireParticipant(c, c.req.param('id'), user.id);
-  const rows = await repos.messages.listByConversation(conversation.id);
-  const items: MessageView[] = rows
+  const [rows, participants] = await Promise.all([
+    repos.messages.listByConversation(conversation.id),
+    repos.conversations.listParticipants(conversation.id),
+  ]);
+  const items = rows
     .filter((m) => !m.deletedAt)
-    .map((m) => ({
-      id: m.id,
-      conversationId: m.conversationId,
-      senderId: m.senderId,
-      isMine: m.senderId === user.id,
-      body: m.body,
-      imageUrl: m.imageKey ? mediaUrl(m.imageKey) : null,
-      createdAt: m.createdAt,
-      editedAt: m.editedAt,
-    }));
+    .map((m) => toMessageView(m, user.id, participants));
   return sendOk(c, { items });
 });
 
@@ -113,44 +151,78 @@ conversationsRoute.post('/:id/messages', authMiddleware, requireAuth, async (c) 
   const { user } = getAuth(c);
   const { repos } = c.get('ctx');
   const conversation = await requireParticipant(c, c.req.param('id'), user.id);
+  const { body, imageKey, clientId } = await parseBody(c, createMessageSchema);
+
+  // Retry safety, checked FIRST: if this exact message (same retry id) was
+  // already stored, return it — even if the conversation has since been
+  // archived or a block placed. The sender must learn it DID go through, and
+  // the recipient must not be notified a second time.
+  const participants = await repos.conversations.listParticipants(conversation.id);
+  if (clientId) {
+    const existing = await repos.messages.findByClientId(user.id, clientId);
+    if (existing) {
+      if (existing.conversationId !== conversation.id) {
+        throw new ApiError('conflict', 'That message id was already used in another conversation.');
+      }
+      return sendOk(
+        c,
+        { message: toMessageView(existing, user.id, participants), replayed: true },
+        200,
+      );
+    }
+  }
+
   if (conversation.status === 'archived') {
     throw new ApiError('unprocessable', 'This conversation is archived.');
   }
-  const { body, imageKey } = await parseBody(c, createMessageSchema);
+  // A block (either way) ends messaging; an already-agreed trade can still be confirmed or cancelled.
+  for (const p of participants) {
+    if (p.userId !== user.id) await assertCanInteract(c, user.id, p.userId);
+  }
   if (imageKey && !imageKey.startsWith(`messages/${user.id}/`)) {
     throw new ApiError('forbidden', 'That image was not uploaded by you.');
   }
-  const message = await repos.messages.create({
-    conversationId: conversation.id,
-    senderId: user.id,
-    body: body?.trim() ?? '',
-    imageKey: imageKey ?? null,
-  });
 
-  const others = (await repos.conversations.listParticipants(conversation.id)).filter(
-    (p) => p.userId !== user.id,
-  );
+  let message;
+  try {
+    message = await repos.messages.create({
+      conversationId: conversation.id,
+      senderId: user.id,
+      body: body?.trim() ?? '',
+      imageKey: imageKey ?? null,
+      clientId: clientId ?? null,
+    });
+  } catch (error) {
+    // Two identical sends racing: the unique index lets exactly one in; the
+    // other gets the stored message back and notifies no one.
+    const winner = clientId ? await repos.messages.findByClientId(user.id, clientId) : null;
+    if (winner) {
+      return sendOk(
+        c,
+        { message: toMessageView(winner, user.id, participants), replayed: true },
+        200,
+      );
+    }
+    throw error;
+  }
+
   await Promise.all(
-    others.map((p) =>
-      notify(c, {
-        userId: p.userId,
-        type: 'message_received',
-        data: { conversationId: conversation.id, messageId: message.id },
-      }),
-    ),
+    participants
+      .filter((p) => p.userId !== user.id)
+      .map((p) =>
+        notify(c, {
+          userId: p.userId,
+          type: 'message_received',
+          data: { conversationId: conversation.id, messageId: message.id },
+        }),
+      ),
   );
 
-  const view: MessageView = {
-    id: message.id,
-    conversationId: message.conversationId,
-    senderId: message.senderId,
-    isMine: true,
-    body: message.body,
-    imageUrl: message.imageKey ? mediaUrl(message.imageKey) : null,
-    createdAt: message.createdAt,
-    editedAt: message.editedAt,
-  };
-  return sendOk(c, { message: view }, 201);
+  return sendOk(
+    c,
+    { message: toMessageView(message, user.id, participants), replayed: false },
+    201,
+  );
 });
 
 /**
@@ -214,27 +286,19 @@ async function hydrate(
   const visible = lastMessages.filter((m) => !m.deletedAt);
   const last = visible[visible.length - 1] ?? null;
   const lastReadAt = me?.lastReadAt ?? null;
-  const unread =
-    !!last && last.senderId !== meId && (lastReadAt === null || last.createdAt > lastReadAt);
+  // How many of the OTHER people's messages arrived after the caller last read.
+  const unreadCount = visible.filter(
+    (m) => m.senderId !== meId && (lastReadAt === null || m.createdAt > lastReadAt),
+  ).length;
 
   return {
     id: conversation.id,
     status: conversation.status as ConversationView['status'],
     offerId: conversation.offerId,
     participants: otherRefs,
-    lastMessage: last
-      ? {
-          id: last.id,
-          conversationId: last.conversationId,
-          senderId: last.senderId,
-          isMine: last.senderId === meId,
-          body: last.body,
-          imageUrl: last.imageKey ? mediaUrl(last.imageKey) : null,
-          createdAt: last.createdAt,
-          editedAt: last.editedAt,
-        }
-      : null,
-    unread,
+    lastMessage: last ? toMessageView(last, meId, participants) : null,
+    unread: unreadCount > 0,
+    unreadCount,
     createdAt: conversation.createdAt,
     updatedAt: conversation.updatedAt,
   };

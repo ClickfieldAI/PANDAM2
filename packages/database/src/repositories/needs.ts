@@ -4,7 +4,7 @@ import { newId } from '../id';
 import { type PublicationStatus } from '../schema/_shared';
 import { type NeedRow, type NewNeedRow, needs } from '../schema/needs';
 
-import { type Database, firstOrNull, one, touch } from './helpers';
+import { type Database, firstOrNull, one, touch, ownerIsActive } from './helpers';
 
 export type CreateNeedInput = Omit<NewNeedRow, 'id' | 'status' | 'createdAt' | 'updatedAt'> & {
   status?: PublicationStatus;
@@ -57,7 +57,10 @@ export function needsRepository(db: Database) {
 
     /** Every published need — the discovery/matching read path. */
     async listAllPublished(): Promise<NeedRow[]> {
-      return db.select().from(needs).where(eq(needs.status, 'published'));
+      return db
+        .select()
+        .from(needs)
+        .where(and(eq(needs.status, 'published'), ownerIsActive(needs.ownerId)));
     },
 
     /** Published needs in a category+type — the matching read path. */
@@ -71,6 +74,7 @@ export function needsRepository(db: Database) {
         .where(
           and(
             eq(needs.status, 'published'),
+            ownerIsActive(needs.ownerId),
             eq(needs.categoryId, categoryId),
             eq(needs.type, type),
           ),

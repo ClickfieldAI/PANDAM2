@@ -16,8 +16,10 @@ export interface Env {
    */
   CORS_ORIGINS?: string;
 
-  /** Secret (apps/worker/.dev.vars locally). */
+  /** Secret (apps/worker/.dev.vars locally). Crash reports go here; unset = reporting is off. */
   SENTRY_DSN?: string;
+  /** Optional build/version label attached to crash reports (e.g. a git sha). */
+  RELEASE?: string;
   POSTHOG_KEY?: string;
   POSTHOG_HOST?: string;
 

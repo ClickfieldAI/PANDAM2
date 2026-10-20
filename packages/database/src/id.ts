@@ -33,7 +33,9 @@ export const ID_PREFIXES = {
   dispute: 'dsp',
   payment: 'pay',
   demoFeeTransaction: 'dft',
+  barterEvent: 'bev',
   itemView: 'vew',
+  adminAudit: 'aud',
 } as const;
 
 export type EntityName = keyof typeof ID_PREFIXES;

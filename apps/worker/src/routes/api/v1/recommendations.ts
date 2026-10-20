@@ -113,7 +113,12 @@ recommendationsRoute.get('/', authMiddleware, requireAuth, async (c) => {
   // The exact same "available" definition Home/Discover use: published only.
   // Draft/paused/traded/archived listings never reach `discoverListings` in
   // the first place — there is no second definition of "available" here.
-  const candidates = await repos.market.discoverListings({ limit: MAX_CANDIDATES });
+  // Blocked people (either way) are never recommended.
+  const hidden = await repos.blocks.relatedUserIds(user.id);
+  const candidates = await repos.market.discoverListings({
+    limit: MAX_CANDIDATES,
+    excludeOwnerIds: [...hidden],
+  });
   const eligible = candidates.filter((item) => item.ownerId !== user.id);
 
   const scored = eligible

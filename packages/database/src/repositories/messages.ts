@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 
 import { newId } from '../id';
 import { type MessageRow, messages } from '../schema/messages';
@@ -10,6 +10,7 @@ export interface CreateMessageInput {
   senderId: string;
   body: string;
   imageKey?: string | null;
+  clientId?: string | null;
 }
 
 export function messagesRepository(db: Database) {
@@ -20,6 +21,16 @@ export function messagesRepository(db: Database) {
         .values({ ...input, id: newId('message') })
         .returning();
       return one(rows, 'messages.create');
+    },
+
+    /** The message this sender already stored under this retry id, if any. */
+    async findByClientId(senderId: string, clientId: string): Promise<MessageRow | null> {
+      const rows = await db
+        .select()
+        .from(messages)
+        .where(and(eq(messages.senderId, senderId), eq(messages.clientId, clientId)))
+        .limit(1);
+      return firstOrNull(rows);
     },
 
     async findById(id: string): Promise<MessageRow | null> {

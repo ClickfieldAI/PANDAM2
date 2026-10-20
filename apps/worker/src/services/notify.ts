@@ -29,6 +29,8 @@ export interface NotifyInput {
    */
   title?: string;
   body?: string;
+  /** Override the automatic event identity (type + related ids). */
+  dedupeKey?: string;
 }
 
 /**
@@ -45,15 +47,45 @@ const COPY: Record<NotificationType, { title: string; body: string }> = {
   offer_rejected: { title: 'Offer declined', body: 'That trade offer was declined.' },
   offer_cancelled: { title: 'Offer withdrawn', body: 'That trade offer was withdrawn.' },
   offer_expired: { title: 'Offer expired', body: 'A trade offer expired before it was answered.' },
+  offer_countered: {
+    title: 'Counter offer',
+    body: 'They answered your offer with a different swap.',
+  },
   message_received: { title: 'New message', body: 'You have a new message about a trade.' },
   transaction_updated: { title: 'Trade updated', body: 'One of your trades changed status.' },
   review_received: { title: 'New review', body: 'Someone left you a review.' },
   review_reminder: { title: 'Leave a review', body: 'How did your last trade go?' },
+  moderation_notice: {
+    title: 'Update on your listing',
+    body: 'A PANDAM moderator removed one of your posts. Open the app for details.',
+  },
+  report_update: { title: 'Report update', body: 'A report you filed has been reviewed.' },
   need_match: {
     title: 'Someone needs something you have',
     body: 'A new request matches an item you listed.',
   },
+  listing_match: {
+    title: 'New listing for something you need',
+    body: 'A new listing matches a request you posted.',
+  },
+  listing_saved: {
+    title: 'Someone saved your listing',
+    body: 'Your listing was added to a saved list.',
+  },
 };
+
+/**
+ * What makes this event THE SAME event: its type plus its related ids. A retried
+ * request therefore produces the same key and is dropped by the unique index.
+ * (`message_received` carries the message id; `transaction_updated` the status.)
+ */
+export function eventKey(input: Pick<NotifyInput, 'type' | 'data' | 'dedupeKey'>): string {
+  if (input.dedupeKey) return input.dedupeKey;
+  const parts = Object.entries(input.data ?? {})
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([k, v]) => `${k}=${v}`);
+  return `${input.type}|${parts.join('&')}`;
+}
 
 /**
  * Write the notification and push it. Push happens inside `waitUntil` where
@@ -63,11 +95,18 @@ const COPY: Record<NotificationType, { title: string; body: string }> = {
 export async function notify(c: Context<AppEnv>, input: NotifyInput): Promise<void> {
   const { repos } = c.get('ctx');
 
-  await repos.notifications.create({
+  const copy = COPY[input.type];
+  const stored = await repos.notifications.create({
     userId: input.userId,
     type: input.type,
     data: input.data ?? null,
+    title: input.title ?? copy.title,
+    body: input.body ?? copy.body,
+    dedupeKey: eventKey(input),
   });
+  // The same event was already recorded (a retried request): neither a second
+  // row nor a second push.
+  if (!stored) return;
 
   const deliver = pushToUser(c, input);
   try {
@@ -83,13 +122,15 @@ export async function notify(c: Context<AppEnv>, input: NotifyInput): Promise<vo
 async function pushToUser(c: Context<AppEnv>, input: NotifyInput): Promise<void> {
   try {
     const { repos } = c.get('ctx');
+    // Push is a convenience copy: respect the user's switch. The in-app row exists regardless.
+    if (!(await repos.notifications.getPreferences(input.userId)).pushEnabled) return;
     const tokens = await repos.pushTokens.listActiveForUser(input.userId);
     if (tokens.length === 0) return;
 
     const copy = COPY[input.type];
     // The badge is the user's real unread count, so clearing notifications in
     // the app and the number on the icon cannot disagree.
-    const unread = (await repos.notifications.listForUser(input.userId, true)).length;
+    const unread = await repos.notifications.unreadCount(input.userId);
 
     const messages: PushMessage[] = tokens.map((t) => ({
       to: t.token,

@@ -21,6 +21,8 @@ export type ErrorCode =
   | 'not_found'
   | 'conflict'
   | 'unprocessable'
+  | 'too_many_requests'
+  | 'payload_too_large'
   | 'not_implemented'
   | 'db_unavailable'
   | 'internal_error';
@@ -33,6 +35,8 @@ const STATUS: Record<ErrorCode, ContentfulStatusCode> = {
   not_found: 404,
   conflict: 409,
   unprocessable: 422,
+  too_many_requests: 429,
+  payload_too_large: 413,
   not_implemented: 501,
   db_unavailable: 503,
   internal_error: 500,
@@ -61,7 +65,17 @@ export const errBody = (
   code: ErrorCode,
   message: string,
   details?: Record<string, string[]>,
-): ApiErr => ({ ok: false, error: { code, message, ...(details ? { details } : {}) } });
+  requestId?: string,
+): ApiErr => ({
+  ok: false,
+  error: {
+    code,
+    message,
+    ...(details ? { details } : {}),
+    // Quote this to support: it identifies the exact log line and crash report.
+    ...(requestId ? { requestId } : {}),
+  },
+});
 
 /** Write a success envelope. */
 export function sendOk<T>(c: Context, data: T, status: ContentfulStatusCode = 200) {
@@ -75,7 +89,8 @@ export function sendError(
   message: string,
   details?: Record<string, string[]>,
 ) {
-  return c.json(errBody(code, message, details), STATUS[code]);
+  const requestId = (c as Context<{ Variables: { requestId?: string } }>).get('requestId');
+  return c.json(errBody(code, message, details, requestId), STATUS[code]);
 }
 
 /** Flatten a ZodError into `{ field: [messages] }`. */

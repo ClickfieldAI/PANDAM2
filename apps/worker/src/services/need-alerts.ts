@@ -28,7 +28,9 @@ export async function alertNeedMatches(c: Context<AppEnv>, need: NeedForAlert): 
   try {
     const { repos } = c.get('ctx');
     const listings = await repos.listings.listPublishedByCategoryType(need.categoryId, need.type);
-    const recipients = selectNeedAlertRecipients(need, listings);
+    // Nobody who is blocked (either way) with the requester is alerted.
+    const hidden = await repos.blocks.relatedUserIds(need.ownerId);
+    const recipients = selectNeedAlertRecipients(need, listings).filter((id) => !hidden.has(id));
 
     let sent = 0;
     for (const userId of recipients) {

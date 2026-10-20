@@ -42,6 +42,16 @@ export const listings = sqliteTable(
       .default('barter'),
     /** Minor currency unit (paise for INR). NULL when `transactionType` is `barter`. */
     priceAmount: integer('price_amount'),
+    /**
+     * Set when the owner deleted a listing that has trade history. The row is
+     * kept (past offers and trades still need its title) but is hidden from
+     * every list. A listing with no history is hard-deleted instead.
+     */
+    deletedAt: integer('deleted_at'),
+    /** Set when staff removed this item; the owner cannot re-publish while set. */
+    moderationRemovedAt: integer('moderation_removed_at'),
+    moderationReason: text('moderation_reason'),
+    moderationBy: text('moderation_by'),
     priceCurrency: text('price_currency').notNull().default('INR'),
     createdAt,
     updatedAt,

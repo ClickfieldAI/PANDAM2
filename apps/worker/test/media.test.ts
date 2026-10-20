@@ -86,10 +86,19 @@ async function createNeed(token: string, title = 'I need a bike'): Promise<Marke
   return (await json<Ok<{ item: MarketItem }>>(res)).data.item;
 }
 
-/** A multipart body carrying one "image" of the given type and size. */
+/** The first bytes a real file of each type starts with. */
+const SIGNATURES: Record<string, number[]> = {
+  'image/jpeg': [0xff, 0xd8, 0xff, 0xe0],
+  'image/png': [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+  'image/webp': [0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50],
+};
+
+/** A multipart body carrying one real-looking "image" of the given type and size. */
 function imageForm(type = 'image/jpeg', bytes = 32): FormData {
+  const data = new Uint8Array(bytes);
+  data.set(SIGNATURES[type] ?? []);
   const form = new FormData();
-  form.append('file', new File([new Uint8Array(bytes)], 'photo.jpg', { type }));
+  form.append('file', new File([data], 'photo.jpg', { type }));
   return form;
 }
 
@@ -186,6 +195,22 @@ describe('listing photos', () => {
     const res = await upload(listing.id, me.token, imageForm('application/pdf'));
     expect(res.status).toBe(422);
     expect(bucket.size()).toBe(0);
+  });
+
+  it('accepts a real photo even when the client sends an empty or generic content type (Android)', async () => {
+    const me = await register('androiduser');
+    const listing = await createListing(me.token);
+    for (const declared of ['', 'application/octet-stream', 'image/jpg']) {
+      const data = new Uint8Array(64);
+      data.set([0xff, 0xd8, 0xff, 0xe0]);
+      const form = new FormData();
+      form.append('file', new File([data], 'IMG_1000012345', { type: declared }));
+      const res = await upload(listing.id, me.token, form);
+      expect(res.status, `declared "${declared}"`).toBe(201);
+    }
+    // The stored type is what the bytes are, not what the client claimed.
+    expect(bucket.keys()).toHaveLength(3);
+    expect(bucket.keys().every((k) => k.endsWith('.jpg'))).toBe(true);
   });
 
   it('rejects an image over the size cap', async () => {

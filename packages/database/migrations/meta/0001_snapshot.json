@@ -81,16 +81,12 @@
       "indexes": {
         "users_email_unique": {
           "name": "users_email_unique",
-          "columns": [
-            "lower(\"email\")"
-          ],
+          "columns": ["lower(\"email\")"],
           "isUnique": true
         },
         "users_status_idx": {
           "name": "users_status_idx",
-          "columns": [
-            "status"
-          ],
+          "columns": ["status"],
           "isUnique": false
         }
       },
@@ -185,16 +181,12 @@
       "indexes": {
         "profiles_user_id_unique": {
           "name": "profiles_user_id_unique",
-          "columns": [
-            "user_id"
-          ],
+          "columns": ["user_id"],
           "isUnique": true
         },
         "profiles_username_unique": {
           "name": "profiles_username_unique",
-          "columns": [
-            "lower(\"username\")"
-          ],
+          "columns": ["lower(\"username\")"],
           "isUnique": true
         }
       },
@@ -203,12 +195,8 @@
           "name": "profiles_user_id_users_id_fk",
           "tableFrom": "profiles",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -277,9 +265,7 @@
       "indexes": {
         "categories_slug_unique": {
           "name": "categories_slug_unique",
-          "columns": [
-            "slug"
-          ],
+          "columns": ["slug"],
           "isUnique": true
         }
       },
@@ -361,25 +347,17 @@
       "indexes": {
         "listings_owner_idx": {
           "name": "listings_owner_idx",
-          "columns": [
-            "owner_id"
-          ],
+          "columns": ["owner_id"],
           "isUnique": false
         },
         "listings_category_idx": {
           "name": "listings_category_idx",
-          "columns": [
-            "category_id"
-          ],
+          "columns": ["category_id"],
           "isUnique": false
         },
         "listings_match_idx": {
           "name": "listings_match_idx",
-          "columns": [
-            "status",
-            "category_id",
-            "type"
-          ],
+          "columns": ["status", "category_id", "type"],
           "isUnique": false
         }
       },
@@ -388,12 +366,8 @@
           "name": "listings_owner_id_users_id_fk",
           "tableFrom": "listings",
           "tableTo": "users",
-          "columnsFrom": [
-            "owner_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["owner_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -401,12 +375,8 @@
           "name": "listings_category_id_categories_id_fk",
           "tableFrom": "listings",
           "tableTo": "categories",
-          "columnsFrom": [
-            "category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["category_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -459,10 +429,7 @@
       "indexes": {
         "listing_images_listing_idx": {
           "name": "listing_images_listing_idx",
-          "columns": [
-            "listing_id",
-            "sort_order"
-          ],
+          "columns": ["listing_id", "sort_order"],
           "isUnique": false
         }
       },
@@ -471,12 +438,8 @@
           "name": "listing_images_listing_id_listings_id_fk",
           "tableFrom": "listing_images",
           "tableTo": "listings",
-          "columnsFrom": [
-            "listing_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["listing_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -558,25 +521,17 @@
       "indexes": {
         "needs_owner_idx": {
           "name": "needs_owner_idx",
-          "columns": [
-            "owner_id"
-          ],
+          "columns": ["owner_id"],
           "isUnique": false
         },
         "needs_category_idx": {
           "name": "needs_category_idx",
-          "columns": [
-            "category_id"
-          ],
+          "columns": ["category_id"],
           "isUnique": false
         },
         "needs_match_idx": {
           "name": "needs_match_idx",
-          "columns": [
-            "status",
-            "category_id",
-            "type"
-          ],
+          "columns": ["status", "category_id", "type"],
           "isUnique": false
         }
       },
@@ -585,12 +540,8 @@
           "name": "needs_owner_id_users_id_fk",
           "tableFrom": "needs",
           "tableTo": "users",
-          "columnsFrom": [
-            "owner_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["owner_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -598,12 +549,8 @@
           "name": "needs_category_id_categories_id_fk",
           "tableFrom": "needs",
           "tableTo": "categories",
-          "columnsFrom": [
-            "category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["category_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -692,28 +639,17 @@
       "indexes": {
         "matches_items_unique": {
           "name": "matches_items_unique",
-          "columns": [
-            "a_listing_id",
-            "b_need_id",
-            "b_listing_id",
-            "a_need_id"
-          ],
+          "columns": ["a_listing_id", "b_need_id", "b_listing_id", "a_need_id"],
           "isUnique": true
         },
         "matches_user_a_idx": {
           "name": "matches_user_a_idx",
-          "columns": [
-            "user_a_id",
-            "status"
-          ],
+          "columns": ["user_a_id", "status"],
           "isUnique": false
         },
         "matches_user_b_idx": {
           "name": "matches_user_b_idx",
-          "columns": [
-            "user_b_id",
-            "status"
-          ],
+          "columns": ["user_b_id", "status"],
           "isUnique": false
         }
       },
@@ -722,12 +658,8 @@
           "name": "matches_user_a_id_users_id_fk",
           "tableFrom": "matches",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_a_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_a_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -735,12 +667,8 @@
           "name": "matches_user_b_id_users_id_fk",
           "tableFrom": "matches",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_b_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_b_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -748,12 +676,8 @@
           "name": "matches_a_listing_id_listings_id_fk",
           "tableFrom": "matches",
           "tableTo": "listings",
-          "columnsFrom": [
-            "a_listing_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["a_listing_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -761,12 +685,8 @@
           "name": "matches_b_need_id_needs_id_fk",
           "tableFrom": "matches",
           "tableTo": "needs",
-          "columnsFrom": [
-            "b_need_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["b_need_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -774,12 +694,8 @@
           "name": "matches_b_listing_id_listings_id_fk",
           "tableFrom": "matches",
           "tableTo": "listings",
-          "columnsFrom": [
-            "b_listing_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["b_listing_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -787,12 +703,8 @@
           "name": "matches_a_need_id_needs_id_fk",
           "tableFrom": "matches",
           "tableTo": "needs",
-          "columnsFrom": [
-            "a_need_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["a_need_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -895,25 +807,17 @@
       "indexes": {
         "offers_to_user_idx": {
           "name": "offers_to_user_idx",
-          "columns": [
-            "to_user_id",
-            "status"
-          ],
+          "columns": ["to_user_id", "status"],
           "isUnique": false
         },
         "offers_from_user_idx": {
           "name": "offers_from_user_idx",
-          "columns": [
-            "from_user_id",
-            "status"
-          ],
+          "columns": ["from_user_id", "status"],
           "isUnique": false
         },
         "offers_match_idx": {
           "name": "offers_match_idx",
-          "columns": [
-            "match_id"
-          ],
+          "columns": ["match_id"],
           "isUnique": false
         }
       },
@@ -922,12 +826,8 @@
           "name": "offers_match_id_matches_id_fk",
           "tableFrom": "offers",
           "tableTo": "matches",
-          "columnsFrom": [
-            "match_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["match_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -935,12 +835,8 @@
           "name": "offers_from_user_id_users_id_fk",
           "tableFrom": "offers",
           "tableTo": "users",
-          "columnsFrom": [
-            "from_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["from_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -948,12 +844,8 @@
           "name": "offers_to_user_id_users_id_fk",
           "tableFrom": "offers",
           "tableTo": "users",
-          "columnsFrom": [
-            "to_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["to_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -961,12 +853,8 @@
           "name": "offers_offered_listing_id_listings_id_fk",
           "tableFrom": "offers",
           "tableTo": "listings",
-          "columnsFrom": [
-            "offered_listing_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["offered_listing_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -974,12 +862,8 @@
           "name": "offers_requested_listing_id_listings_id_fk",
           "tableFrom": "offers",
           "tableTo": "listings",
-          "columnsFrom": [
-            "requested_listing_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["requested_listing_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1041,9 +925,7 @@
       "indexes": {
         "conversation_participants_user_idx": {
           "name": "conversation_participants_user_idx",
-          "columns": [
-            "user_id"
-          ],
+          "columns": ["user_id"],
           "isUnique": false
         }
       },
@@ -1052,12 +934,8 @@
           "name": "conversation_participants_conversation_id_conversations_id_fk",
           "tableFrom": "conversation_participants",
           "tableTo": "conversations",
-          "columnsFrom": [
-            "conversation_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["conversation_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1065,22 +943,15 @@
           "name": "conversation_participants_user_id_users_id_fk",
           "tableFrom": "conversation_participants",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "conversation_participants_conversation_id_user_id_pk": {
-          "columns": [
-            "conversation_id",
-            "user_id"
-          ],
+          "columns": ["conversation_id", "user_id"],
           "name": "conversation_participants_conversation_id_user_id_pk"
         }
       },
@@ -1132,9 +1003,7 @@
       "indexes": {
         "conversations_offer_unique": {
           "name": "conversations_offer_unique",
-          "columns": [
-            "offer_id"
-          ],
+          "columns": ["offer_id"],
           "isUnique": true
         }
       },
@@ -1143,12 +1012,8 @@
           "name": "conversations_offer_id_offers_id_fk",
           "tableFrom": "conversations",
           "tableTo": "offers",
-          "columnsFrom": [
-            "offer_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["offer_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1214,10 +1079,7 @@
       "indexes": {
         "messages_conversation_idx": {
           "name": "messages_conversation_idx",
-          "columns": [
-            "conversation_id",
-            "created_at"
-          ],
+          "columns": ["conversation_id", "created_at"],
           "isUnique": false
         }
       },
@@ -1226,12 +1088,8 @@
           "name": "messages_conversation_id_conversations_id_fk",
           "tableFrom": "messages",
           "tableTo": "conversations",
-          "columnsFrom": [
-            "conversation_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["conversation_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1239,12 +1097,8 @@
           "name": "messages_sender_id_users_id_fk",
           "tableFrom": "messages",
           "tableTo": "users",
-          "columnsFrom": [
-            "sender_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sender_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1326,25 +1180,17 @@
       "indexes": {
         "barter_transactions_offer_unique": {
           "name": "barter_transactions_offer_unique",
-          "columns": [
-            "offer_id"
-          ],
+          "columns": ["offer_id"],
           "isUnique": true
         },
         "barter_transactions_initiator_idx": {
           "name": "barter_transactions_initiator_idx",
-          "columns": [
-            "initiated_by_user_id",
-            "status"
-          ],
+          "columns": ["initiated_by_user_id", "status"],
           "isUnique": false
         },
         "barter_transactions_counterparty_idx": {
           "name": "barter_transactions_counterparty_idx",
-          "columns": [
-            "counterparty_user_id",
-            "status"
-          ],
+          "columns": ["counterparty_user_id", "status"],
           "isUnique": false
         }
       },
@@ -1353,12 +1199,8 @@
           "name": "barter_transactions_offer_id_offers_id_fk",
           "tableFrom": "barter_transactions",
           "tableTo": "offers",
-          "columnsFrom": [
-            "offer_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["offer_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         },
@@ -1366,12 +1208,8 @@
           "name": "barter_transactions_initiated_by_user_id_users_id_fk",
           "tableFrom": "barter_transactions",
           "tableTo": "users",
-          "columnsFrom": [
-            "initiated_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["initiated_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         },
@@ -1379,12 +1217,8 @@
           "name": "barter_transactions_counterparty_user_id_users_id_fk",
           "tableFrom": "barter_transactions",
           "tableTo": "users",
-          "columnsFrom": [
-            "counterparty_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["counterparty_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -1455,17 +1289,12 @@
       "indexes": {
         "reviews_txn_reviewer_unique": {
           "name": "reviews_txn_reviewer_unique",
-          "columns": [
-            "transaction_id",
-            "reviewer_id"
-          ],
+          "columns": ["transaction_id", "reviewer_id"],
           "isUnique": true
         },
         "reviews_reviewee_idx": {
           "name": "reviews_reviewee_idx",
-          "columns": [
-            "reviewee_id"
-          ],
+          "columns": ["reviewee_id"],
           "isUnique": false
         }
       },
@@ -1474,12 +1303,8 @@
           "name": "reviews_transaction_id_barter_transactions_id_fk",
           "tableFrom": "reviews",
           "tableTo": "barter_transactions",
-          "columnsFrom": [
-            "transaction_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["transaction_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1487,12 +1312,8 @@
           "name": "reviews_reviewer_id_users_id_fk",
           "tableFrom": "reviews",
           "tableTo": "users",
-          "columnsFrom": [
-            "reviewer_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["reviewer_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1500,12 +1321,8 @@
           "name": "reviews_reviewee_id_users_id_fk",
           "tableFrom": "reviews",
           "tableTo": "users",
-          "columnsFrom": [
-            "reviewee_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["reviewee_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1573,18 +1390,12 @@
       "indexes": {
         "notifications_user_idx": {
           "name": "notifications_user_idx",
-          "columns": [
-            "user_id",
-            "created_at"
-          ],
+          "columns": ["user_id", "created_at"],
           "isUnique": false
         },
         "notifications_user_unread_idx": {
           "name": "notifications_user_unread_idx",
-          "columns": [
-            "user_id",
-            "read_at"
-          ],
+          "columns": ["user_id", "read_at"],
           "isUnique": false
         }
       },
@@ -1593,12 +1404,8 @@
           "name": "notifications_user_id_users_id_fk",
           "tableFrom": "notifications",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1680,24 +1487,17 @@
       "indexes": {
         "reports_subject_idx": {
           "name": "reports_subject_idx",
-          "columns": [
-            "subject_type",
-            "subject_id"
-          ],
+          "columns": ["subject_type", "subject_id"],
           "isUnique": false
         },
         "reports_status_idx": {
           "name": "reports_status_idx",
-          "columns": [
-            "status"
-          ],
+          "columns": ["status"],
           "isUnique": false
         },
         "reports_reporter_idx": {
           "name": "reports_reporter_idx",
-          "columns": [
-            "reporter_id"
-          ],
+          "columns": ["reporter_id"],
           "isUnique": false
         }
       },
@@ -1706,12 +1506,8 @@
           "name": "reports_reporter_id_users_id_fk",
           "tableFrom": "reports",
           "tableTo": "users",
-          "columnsFrom": [
-            "reporter_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["reporter_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1793,16 +1589,12 @@
       "indexes": {
         "disputes_transaction_idx": {
           "name": "disputes_transaction_idx",
-          "columns": [
-            "transaction_id"
-          ],
+          "columns": ["transaction_id"],
           "isUnique": false
         },
         "disputes_status_idx": {
           "name": "disputes_status_idx",
-          "columns": [
-            "status"
-          ],
+          "columns": ["status"],
           "isUnique": false
         }
       },
@@ -1811,12 +1603,8 @@
           "name": "disputes_transaction_id_barter_transactions_id_fk",
           "tableFrom": "disputes",
           "tableTo": "barter_transactions",
-          "columnsFrom": [
-            "transaction_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["transaction_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1824,12 +1612,8 @@
           "name": "disputes_raised_by_user_id_users_id_fk",
           "tableFrom": "disputes",
           "tableTo": "users",
-          "columnsFrom": [
-            "raised_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["raised_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }

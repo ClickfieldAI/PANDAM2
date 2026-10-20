@@ -15,15 +15,21 @@
  * conversation (or reuses one from an older offer that still has it).
  */
 import { type ItemRef, type OfferView } from '@pandam/types';
-import { createOfferSchema, respondToOfferSchema } from '@pandam/validation';
+import { counterOfferSchema, createOfferSchema, respondToOfferSchema } from '@pandam/validation';
 import { type Context, Hono } from 'hono';
 
-import { offerTransition } from '../../../domain/offers';
 import { ApiError, sendOk } from '../../../lib/http';
 import { mediaUrl, readUploadedImage, requireMedia } from '../../../lib/media';
 import { coverImageUrl, toOwnerRef } from '../../../lib/serialize';
 import { parseBody } from '../../../lib/validate';
 import { authMiddleware, getAuth, requireAuth } from '../../../middleware/auth';
+import {
+  acceptOffer,
+  closeOffer,
+  counterOffer,
+  ensureAcceptanceFinalized,
+} from '../../../services/barter';
+import { assertCanInteract } from '../../../services/blocks';
 import { notify } from '../../../services/notify';
 import { type AppEnv } from '../../../types';
 
@@ -47,6 +53,33 @@ offersRoute.post('/', authMiddleware, requireAuth, async (c) => {
   const { user } = getAuth(c);
   const { repos } = c.get('ctx');
   const input = await parseBody(c, createOfferSchema);
+
+  if (input.expiresAt !== undefined && input.expiresAt <= Date.now()) {
+    throw new ApiError('unprocessable', 'An offer must expire in the future.');
+  }
+
+  // Retry safety: a repeat of the same request (same Idempotency-Key) returns
+  // the offer it already created instead of creating a second one.
+  const idempotencyKey = c.req.header('Idempotency-Key')?.trim() || null;
+  if (idempotencyKey !== null && (idempotencyKey.length < 8 || idempotencyKey.length > 80)) {
+    throw new ApiError('bad_request', 'Idempotency-Key must be 8-80 characters.');
+  }
+  if (idempotencyKey) {
+    const replay = await repos.offers.findByIdempotencyKey(user.id, idempotencyKey);
+    if (replay) {
+      if (
+        replay.offeredListingId !== input.offeredListingId ||
+        (replay.requestedListingId ?? null) !== (input.requestedListingId ?? null) ||
+        (replay.requestedNeedId ?? null) !== (input.requestedNeedId ?? null)
+      ) {
+        throw new ApiError(
+          'conflict',
+          'That Idempotency-Key was already used for a different offer.',
+        );
+      }
+      return sendOk(c, { offer: await hydrate(c, replay, user.id) }, 200);
+    }
+  }
 
   const offered = await repos.listings.findById(input.offeredListingId);
   if (!offered || offered.status !== 'published' || offered.ownerId !== user.id) {
@@ -81,6 +114,7 @@ offersRoute.post('/', authMiddleware, requireAuth, async (c) => {
   if (toUserId === user.id) {
     throw new ApiError('unprocessable', 'You cannot send an offer to yourself.');
   }
+  await assertCanInteract(c, user.id, toUserId);
   if (input.imageKey && !input.imageKey.startsWith(`offers/${user.id}/`)) {
     throw new ApiError('forbidden', 'That image does not belong to you.');
   }
@@ -96,17 +130,35 @@ offersRoute.post('/', authMiddleware, requireAuth, async (c) => {
   // deterministic matches this app shows today are computed on the fly (see
   // `routes/api/v1/matches.ts`) and never written to that table.
 
-  const created = await repos.offers.create({
-    matchId: input.matchId ?? null,
-    fromUserId: user.id,
-    toUserId,
-    offeredListingId: input.offeredListingId,
-    requestedListingId: input.requestedListingId ?? null,
-    requestedNeedId: input.requestedNeedId ?? null,
-    imageKey: input.imageKey ?? null,
-    message: input.message ?? null,
-    expiresAt: input.expiresAt ?? null,
-  });
+  let created;
+  try {
+    created = await repos.offers.create({
+      idempotencyKey,
+      matchId: input.matchId ?? null,
+      fromUserId: user.id,
+      toUserId,
+      offeredListingId: input.offeredListingId,
+      requestedListingId: input.requestedListingId ?? null,
+      requestedNeedId: input.requestedNeedId ?? null,
+      imageKey: input.imageKey ?? null,
+      message: input.message ?? null,
+      expiresAt: input.expiresAt ?? null,
+    });
+  } catch (error) {
+    // The database is the final arbiter: two racing requests can both pass the
+    // read-based checks above, but only one can insert (unique indexes).
+    if (
+      error instanceof Error &&
+      /UNIQUE|constraint/i.test(error.message + String(error.cause ?? ''))
+    ) {
+      const replay = idempotencyKey
+        ? await repos.offers.findByIdempotencyKey(user.id, idempotencyKey)
+        : null;
+      if (replay) return sendOk(c, { offer: await hydrate(c, replay, user.id) }, 200);
+      throw new ApiError('unprocessable', 'You already have a pending request for this item.');
+    }
+    throw error;
+  }
 
   // No conversation yet — the recipient has to accept before either side can
   // message the other (see `POST /:id/respond`).
@@ -142,92 +194,58 @@ offersRoute.get('/:id', authMiddleware, requireAuth, async (c) => {
   if (!offer || (offer.fromUserId !== user.id && offer.toUserId !== user.id)) {
     throw new ApiError('not_found', 'That offer does not exist.');
   }
+  // Self-heal: an accept that crashed after its compare-and-swap but before
+  // its follow-up writes is completed the next time anyone reads the offer.
+  if (offer.status === 'accepted' && !(await repos.barterTransactions.findByOffer(offer.id))) {
+    await ensureAcceptanceFinalized(c, offer);
+  }
   return sendOk(c, { offer: await hydrate(c, offer, user.id) });
 });
 
 offersRoute.post('/:id/respond', authMiddleware, requireAuth, async (c) => {
   const { user } = getAuth(c);
   const { repos } = c.get('ctx');
-  const offer = await repos.offers.findById(c.req.param('id'));
-  if (!offer || (offer.fromUserId !== user.id && offer.toUserId !== user.id)) {
+  // Existence + party check first so a stranger can never learn an offer exists.
+  const existing = await repos.offers.findById(c.req.param('id'));
+  if (!existing || (existing.fromUserId !== user.id && existing.toUserId !== user.id)) {
     throw new ApiError('not_found', 'That offer does not exist.');
   }
   const { action } = await parseBody(c, respondToOfferSchema);
 
-  if (action === 'cancel' && offer.fromUserId !== user.id) {
-    throw new ApiError('forbidden', 'Only the sender can cancel an offer.');
-  }
-  if ((action === 'accept' || action === 'reject') && offer.toUserId !== user.id) {
-    throw new ApiError('forbidden', 'Only the recipient can respond to an offer.');
-  }
-
-  const transition = offerTransition(offer.status, action);
-  if (!transition.ok) {
-    throw new ApiError('unprocessable', transition.error.message);
-  }
-  await repos.offers.applyStatus(offer.id, transition.next);
-
+  // All state changes go through the barter service: compare-and-swap writes,
+  // idempotent retries, expiry and availability checks (see services/barter.ts).
   if (action === 'accept') {
-    const transaction = await repos.barterTransactions.create({
-      offerId: offer.id,
-      initiatedByUserId: offer.fromUserId,
-      counterpartyUserId: offer.toUserId,
-    });
-    // Accepting is what opens the conversation. `findByOffer` first in case
-    // this offer somehow already has one (e.g. a pre-fix row from before
-    // chat was gated on accept).
-    const conversation =
-      (await repos.conversations.findByOffer(offer.id)) ??
-      (await repos.conversations.create({
-        offerId: offer.id,
-        participantUserIds: [offer.fromUserId, offer.toUserId],
-      }));
-    const listingIds = [offer.offeredListingId, offer.requestedListingId].filter(
-      (id): id is string => id !== null,
-    );
-    const needIds = offer.requestedNeedId ? [offer.requestedNeedId] : [];
-
-    const [, , siblings] = await Promise.all([
-      // The traded items leave the market; a fulfilled request closes.
-      repos.listings.setStatus(offer.offeredListingId, 'traded'),
-      offer.requestedListingId
-        ? repos.listings.setStatus(offer.requestedListingId, 'traded')
-        : repos.needs.setStatus(offer.requestedNeedId!, 'traded'),
-      repos.offers.listPendingTouchingItems(listingIds, needIds, offer.id),
-      notify(c, {
-        userId: offer.fromUserId,
-        type: 'offer_accepted',
-        data: { offerId: offer.id, transactionId: transaction.id, conversationId: conversation.id },
-      }),
-    ]);
-
-    // Only one offer can win per item: close every other pending offer that
-    // touched either traded item, and tell its sender why.
-    await Promise.all(
-      siblings.map(async (sibling) => {
-        await repos.offers.applyStatus(sibling.id, 'cancelled');
-        await notify(c, {
-          userId: sibling.fromUserId,
-          type: 'offer_cancelled',
-          data: { offerId: sibling.id },
-        });
-      }),
-    );
+    await acceptOffer(c, existing.id, user.id);
   } else {
-    await notify(c, {
-      userId: offer.fromUserId,
-      type: action === 'reject' ? 'offer_rejected' : 'offer_cancelled',
-      data: { offerId: offer.id },
-    });
+    await closeOffer(c, existing.id, user.id, action === 'reject' ? 'reject' : 'cancel');
   }
 
-  const updated = await repos.offers.findById(offer.id);
+  const updated = await repos.offers.findById(existing.id);
   return sendOk(c, { offer: await hydrate(c, updated!, user.id) });
+});
+
+offersRoute.post('/:id/counter', authMiddleware, requireAuth, async (c) => {
+  const { user } = getAuth(c);
+  const input = await parseBody(c, counterOfferSchema);
+  const counter = await counterOffer(c, c.req.param('id'), user.id, input);
+  return sendOk(c, { offer: await hydrate(c, counter, user.id) }, 201);
+});
+
+/** The whole negotiation this offer belongs to, oldest first. Parties only. */
+offersRoute.get('/:id/history', authMiddleware, requireAuth, async (c) => {
+  const { user } = getAuth(c);
+  const { repos } = c.get('ctx');
+  const offer = await repos.offers.findById(c.req.param('id'));
+  if (!offer || (offer.fromUserId !== user.id && offer.toUserId !== user.id)) {
+    throw new ApiError('not_found', 'That offer does not exist.');
+  }
+  const chain = await repos.offers.findChain(offer.id);
+  return sendOk(c, { items: await Promise.all(chain.map((o) => hydrate(c, o, user.id))) });
 });
 
 function parseStatusFilter(c: Context<AppEnv>) {
   const raw = c.req.query('status');
-  const allowed = ['pending', 'accepted', 'rejected', 'cancelled', 'expired'] as const;
+  const allowed = ['pending', 'accepted', 'rejected', 'cancelled', 'expired', 'countered'] as const;
   return allowed.includes(raw as (typeof allowed)[number])
     ? (raw as (typeof allowed)[number])
     : undefined;
@@ -246,6 +264,7 @@ async function hydrate(
     imageKey: string | null;
     message: string | null;
     matchId: string | null;
+    parentOfferId: string | null;
     expiresAt: number | null;
     respondedAt: number | null;
     createdAt: number;
@@ -254,15 +273,17 @@ async function hydrate(
   meId: string,
 ): Promise<OfferView> {
   const { repos } = c.get('ctx');
-  const [fromProfile, toProfile, offeredListing, requestedItem, conversation] = await Promise.all([
-    repos.profiles.findByUserId(offer.fromUserId),
-    repos.profiles.findByUserId(offer.toUserId),
-    repos.market.getListing(offer.offeredListingId),
-    offer.requestedListingId
-      ? repos.market.getListing(offer.requestedListingId)
-      : repos.market.getNeed(offer.requestedNeedId!),
-    repos.conversations.findByOffer(offer.id),
-  ]);
+  const [fromProfile, toProfile, offeredListing, requestedItem, conversation, counterChild] =
+    await Promise.all([
+      repos.profiles.findByUserId(offer.fromUserId),
+      repos.profiles.findByUserId(offer.toUserId),
+      repos.market.getListing(offer.offeredListingId),
+      offer.requestedListingId
+        ? repos.market.getListing(offer.requestedListingId)
+        : repos.market.getNeed(offer.requestedNeedId!),
+      repos.conversations.findByOffer(offer.id),
+      offer.status === 'countered' ? repos.offers.findChildOf(offer.id) : Promise.resolve(null),
+    ]);
 
   const toItemRef = (
     id: string,
@@ -293,6 +314,8 @@ async function hydrate(
     conversationId: conversation?.id ?? null,
     message: offer.message,
     matchId: offer.matchId,
+    parentOfferId: offer.parentOfferId,
+    counterOfferId: counterChild?.id ?? null,
     expiresAt: offer.expiresAt,
     respondedAt: offer.respondedAt,
     createdAt: offer.createdAt,

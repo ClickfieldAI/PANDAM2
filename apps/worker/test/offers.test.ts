@@ -166,40 +166,55 @@ describe('offer -> transaction -> review journey', () => {
     );
     expect(txForAlice.data.items).toHaveLength(1);
     const tx = txForAlice.data.items[0]!;
-    expect(tx.status).toBe('created');
+    // A trade is born in progress — there is no separate "start" step.
+    expect(tx.status).toBe('in_progress');
     expect(tx.offerId).toBe(offer.id);
 
-    // Completing before starting is rejected.
-    const completeTooSoon = await app.request(
-      `/api/v1/transactions/${tx.id}/status`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...bearer(alice.token) },
-        body: JSON.stringify({ action: 'complete' }),
-      },
-      testEnv,
-    );
-    expect(completeTooSoon.status).toBe(422);
+    const act = (token: string, action: string) =>
+      app.request(
+        `/api/v1/transactions/${tx.id}/status`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...bearer(token) },
+          body: JSON.stringify({ action }),
+        },
+        testEnv,
+      );
 
-    await app.request(
-      `/api/v1/transactions/${tx.id}/status`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...bearer(alice.token) },
-        body: JSON.stringify({ action: 'start' }),
-      },
-      testEnv,
-    );
-    const completeRes = await app.request(
-      `/api/v1/transactions/${tx.id}/status`,
+    // One party's confirmation (even via the legacy "complete") never completes the trade.
+    const first = await act(bob.token, 'complete');
+    expect(first.status).toBe(200);
+    const afterFirst = (
+      await json<
+        Ok<{
+          transaction: { status: string; confirmedByMe: boolean; confirmedByCounterparty: boolean };
+        }>
+      >(first)
+    ).data.transaction;
+    expect(afterFirst).toMatchObject({
+      status: 'in_progress',
+      confirmedByMe: true,
+      confirmedByCounterparty: false,
+    });
+
+    // A review before completion is refused.
+    const early = await app.request(
+      '/api/v1/reviews',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...bearer(bob.token) },
-        body: JSON.stringify({ action: 'complete' }),
+        body: JSON.stringify({ transactionId: tx.id, rating: 5 }),
       },
       testEnv,
     );
+    expect(early.status).toBe(422);
+
+    // The second party's confirmation completes it.
+    const completeRes = await act(alice.token, 'confirm');
     expect(completeRes.status).toBe(200);
+    expect(
+      (await json<Ok<{ transaction: { status: string } }>>(completeRes)).data.transaction.status,
+    ).toBe('completed');
 
     // --- Reviews ---------------------------------------------------------
     const reviewRes = await app.request(

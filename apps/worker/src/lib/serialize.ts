@@ -24,6 +24,7 @@ export function toSafeUser(user: User): SafeUser {
     id: user.id,
     email: user.email,
     status: user.status,
+    role: user.role,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
     identityVerification: {

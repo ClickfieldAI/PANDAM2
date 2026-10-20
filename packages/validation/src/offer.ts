@@ -35,3 +35,18 @@ export const respondToOfferSchema = z.object({
   action: z.enum(['accept', 'reject', 'cancel']),
 });
 export type RespondToOfferInput = z.infer<typeof respondToOfferSchema>;
+
+/**
+ * The recipient answers an offer with a different swap: "I will give THIS of
+ * mine for THAT of yours". Both ends are listings (item-for-item); the server
+ * checks that `offeredListingId` is the caller's and `requestedListingId`
+ * belongs to the original sender.
+ */
+export const counterOfferSchema = z.object({
+  offeredListingId: idSchema('lst'),
+  requestedListingId: idSchema('lst'),
+  message: boundedString(1, 2000).optional(),
+  /** Epoch-ms; must be in the future when present. */
+  expiresAt: z.number().int().positive().optional(),
+});
+export type CounterOfferInput = z.infer<typeof counterOfferSchema>;

@@ -10,12 +10,16 @@ import { Hono } from 'hono';
 import { type AppDeps } from '../../../context';
 import { sendOk } from '../../../lib/http';
 import { contextMiddleware } from '../../../middleware/auth';
+import { rateLimit } from '../../../middleware/rate-limit';
 import { type AppEnv } from '../../../types';
 
+import { adminRoute } from './admin';
 import { authRoute } from './auth';
+import { blocksRoute } from './blocks';
 import { categoriesRoute } from './categories';
 import { conversationsRoute } from './conversations';
 import { demoFeesRoute } from './demo-fees';
+import { favouritesRoute } from './favourites';
 import { createMarketRoute } from './market';
 import { matchesRoute } from './matches';
 import { mediaRoute } from './media';
@@ -130,6 +134,16 @@ const IMPLEMENTED = [
     endpoints: ['POST /', 'GET /mine', 'GET /:id', 'POST /:id/cancel', 'POST /webhook'],
   },
   {
+    name: 'blocks',
+    summary: 'People the caller has blocked (private); enforced across offers, chat and discovery',
+    endpoints: ['GET /', 'PUT /:userId', 'DELETE /:userId'],
+  },
+  {
+    name: 'favourites',
+    summary: "The caller's saved listings (private)",
+    endpoints: ['GET /', 'GET /ids', 'PUT /:listingId', 'DELETE /:listingId'],
+  },
+  {
     name: 'demo-fees',
     summary:
       'DEMO ONLY — tiered platform fee on a simulated sale (no real money; off in production)',
@@ -156,6 +170,9 @@ const DB_GROUPS = [
   'reports',
   'payments',
   'demo-fees',
+  'favourites',
+  'blocks',
+  'admin',
 ] as const;
 
 export function createApiV1(deps: AppDeps = {}) {
@@ -164,6 +181,9 @@ export function createApiV1(deps: AppDeps = {}) {
   for (const group of DB_GROUPS) {
     apiV1.use(`/${group}/*`, contextMiddleware(deps));
   }
+
+  // Abuse-prone writes are rate limited (policy table in middleware/rate-limit.ts).
+  apiV1.use('*', rateLimit);
 
   apiV1.get('/', (c) =>
     sendOk(c, {
@@ -198,6 +218,9 @@ export function createApiV1(deps: AppDeps = {}) {
   apiV1.route('/reports', reportsRoute);
   apiV1.route('/payments', paymentsRoute);
   apiV1.route('/demo-fees', demoFeesRoute);
+  apiV1.route('/favourites', favouritesRoute);
+  apiV1.route('/blocks', blocksRoute);
+  apiV1.route('/admin', adminRoute);
   // No context middleware: `media` only touches R2, never the database.
   apiV1.route('/media', mediaRoute);
 

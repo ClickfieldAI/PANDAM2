@@ -40,7 +40,12 @@ matchesRoute.get('/', authMiddleware, requireAuth, async (c) => {
   }): MatchInput => ({ id: r.id, ownerId: r.ownerId, categoryId: r.categoryId, type: r.type });
 
   const all = findReciprocalMatches(listings.map(toInput), needs.map(toInput));
-  const mine = all.filter((m) => m.userAId === user.id || m.userBId === user.id);
+  const hidden = await repos.blocks.relatedUserIds(user.id);
+  const mine = all.filter((m) => {
+    if (m.userAId !== user.id && m.userBId !== user.id) return false;
+    const other = m.userAId === user.id ? m.userBId : m.userAId;
+    return !hidden.has(other); // never match with someone blocked either way
+  });
 
   if (mine.length === 0) return sendOk(c, { items: [] });
 

@@ -134,7 +134,12 @@ export function createAuthService(repos: Repositories) {
         throw new ApiError('unauthorized', INVALID_CREDENTIALS);
       }
       if (user.status !== 'active') {
-        throw new ApiError('forbidden', 'This account is not active.');
+        throw new ApiError(
+          'forbidden',
+          user.status === 'suspended'
+            ? 'This account has been suspended.'
+            : 'This account is not active.',
+        );
       }
 
       if (needsRehash(credential.passwordHash)) {
@@ -223,7 +228,12 @@ export function createAuthService(repos: Repositories) {
       }
 
       if (user.status !== 'active') {
-        throw new ApiError('forbidden', 'This account is not active.');
+        throw new ApiError(
+          'forbidden',
+          user.status === 'suspended'
+            ? 'This account has been suspended.'
+            : 'This account is not active.',
+        );
       }
 
       const session = await issueSession(user.id, meta);

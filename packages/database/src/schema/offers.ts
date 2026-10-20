@@ -1,5 +1,12 @@
 import { sql } from 'drizzle-orm';
-import { check, index, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import {
+  type AnySQLiteColumn,
+  check,
+  index,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core';
 
 import { OFFER_STATUS, type OfferStatus } from '../enums';
 
@@ -52,6 +59,15 @@ export const offers = sqliteTable(
     /** Optional photo the sender attached (R2 key under `offers/<fromUserId>/`). */
     imageKey: text('image_key'),
     message: text('message'),
+    /**
+     * Set on a counter-offer: the offer it answers. At most ONE counter exists
+     * per offer (unique index), which keeps a negotiation a simple chain.
+     */
+    parentOfferId: text('parent_offer_id').references((): AnySQLiteColumn => offers.id, {
+      onDelete: 'set null',
+    }),
+    /** Client-supplied retry key: (sender, key) is unique so a replay returns the same offer. */
+    idempotencyKey: text('idempotency_key'),
     status: text('status', { enum: OFFER_STATUS }).notNull().default('pending'),
     expiresAt: nullableTimestamp('expires_at'),
     respondedAt: nullableTimestamp('responded_at'),
@@ -68,6 +84,16 @@ export const offers = sqliteTable(
     index('offers_to_user_idx').on(t.toUserId, t.status),
     index('offers_from_user_idx').on(t.fromUserId, t.status),
     index('offers_match_idx').on(t.matchId),
+    // One pending ask per (sender, requested item) — enforced by the database,
+    // not just by a read-then-insert check that two concurrent requests can pass.
+    uniqueIndex('offers_pending_listing_unique')
+      .on(t.fromUserId, t.requestedListingId)
+      .where(sql`${t.status} = 'pending' AND ${t.requestedListingId} IS NOT NULL`),
+    uniqueIndex('offers_pending_need_unique')
+      .on(t.fromUserId, t.requestedNeedId)
+      .where(sql`${t.status} = 'pending' AND ${t.requestedNeedId} IS NOT NULL`),
+    uniqueIndex('offers_parent_unique').on(t.parentOfferId),
+    uniqueIndex('offers_idempotency_unique').on(t.fromUserId, t.idempotencyKey),
   ],
 );
 

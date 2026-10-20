@@ -1,10 +1,14 @@
 import { Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import { cors } from 'hono/cors';
-import { logger } from 'hono/logger';
 import { secureHeaders } from 'hono/secure-headers';
 
 import { type AppDeps } from './context';
 import { ApiError, sendError } from './lib/http';
+import { describeError, log } from './lib/log';
+import { reportError } from './lib/monitoring';
+import { csrfGuard } from './middleware/csrf';
+import { observability } from './middleware/observability';
 import { createApiV1 } from './routes/api/v1';
 import { health } from './routes/health';
 import { type AppEnv } from './types';
@@ -22,10 +26,24 @@ const DEV_ORIGINS = ['http://localhost:3000', 'http://localhost:8081', 'http://l
 const DEV_ORIGIN_PATTERN =
   /^http:\/\/(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$/;
 
-function isAllowedOrigin(origin: string, allowed: Set<string>, isDev: boolean): boolean {
-  if (allowed.has(origin)) return true;
-  return isDev && DEV_ORIGIN_PATTERN.test(origin);
+/**
+ * The origins allowed to make credentialed requests. Deployed environments use
+ * ONLY the explicit `CORS_ORIGINS` allowlist; the localhost conveniences exist
+ * in development alone (a localhost page on a victim's machine must never be
+ * able to call a production API with their cookie).
+ */
+export function isOriginAllowed(origin: string, env: AppEnv['Bindings']): boolean {
+  const configured = (env.CORS_ORIGINS ?? '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+  if (configured.includes(origin)) return true;
+  const isDev = env.PANDAM_ENV === 'development';
+  return isDev && (DEV_ORIGINS.includes(origin) || DEV_ORIGIN_PATTERN.test(origin));
 }
+
+/** JSON bodies are small by nature; uploads (multipart) have their own 8 MB cap. */
+const MAX_JSON_BYTES = 100 * 1024;
 
 /**
  * The PANDAM API application. A pure Hono app (no `fetch` export) so tests call
@@ -46,7 +64,7 @@ function isAllowedOrigin(origin: string, allowed: Set<string>, isDev: boolean): 
 export function createApp(deps: AppDeps = {}) {
   const app = new Hono<AppEnv>();
 
-  app.use('*', logger());
+  app.use('*', observability);
   /**
    * Security headers, with ONE exception.
    *
@@ -66,19 +84,26 @@ export function createApp(deps: AppDeps = {}) {
   app.use('*', (c, next) =>
     c.req.path.startsWith('/api/v1/media/') ? mediaHeaders(c, next) : defaultHeaders(c, next),
   );
-  app.use('*', (c, next) => {
-    const configured = (c.env.CORS_ORIGINS ?? '')
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const allowed = new Set([...configured, ...DEV_ORIGINS]);
-    const isDev = c.env.PANDAM_ENV === 'development';
-    return cors({
-      origin: (origin) => (isAllowedOrigin(origin, allowed, isDev) ? origin : null),
+  app.use('*', (c, next) =>
+    cors({
+      origin: (origin) => (isOriginAllowed(origin, c.env) ? origin : null),
       credentials: true,
       allowMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'Authorization'],
-    })(c, next);
+      allowHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Request-Id'],
+      exposeHeaders: ['X-Request-Id', 'Retry-After', 'RateLimit-Limit', 'RateLimit-Remaining'],
+    })(c, next),
+  );
+  // Cookie-authenticated writes must come from an allowed origin (CSRF).
+  app.use('/api/v1/*', csrfGuard(isOriginAllowed));
+  // Oversized JSON is refused before it is read.
+  app.use('/api/v1/*', async (c, next) => {
+    if ((c.req.header('Content-Type') ?? '').includes('application/json')) {
+      return bodyLimit({
+        maxSize: MAX_JSON_BYTES,
+        onError: (ctx) => sendError(ctx, 'payload_too_large', 'That request body is too large.'),
+      })(c, next);
+    }
+    return next();
   });
 
   app.get('/', (c) => c.json({ ok: true, data: { service: 'pandam-api', docs: '/api/v1' } }));
@@ -91,7 +116,36 @@ export function createApp(deps: AppDeps = {}) {
     if (err instanceof ApiError) {
       return sendError(c, err.code, err.message, err.details);
     }
-    console.error('[pandam-api] unhandled error', err);
+    // An unexpected failure: log it structurally, report it, and answer with a
+    // generic message — internals never reach the client.
+    const requestId = c.get('requestId');
+    log('error', 'unhandled error', {
+      requestId,
+      method: c.req.method,
+      route: c.req.routePath,
+      ...describeError(err),
+    });
+    reportError(
+      {
+        error: err,
+        requestId,
+        method: c.req.method,
+        route: c.req.routePath,
+        userId: c.get('auth')?.user.id ?? null,
+        environment: c.env?.PANDAM_ENV ?? 'unknown',
+        release: c.env?.RELEASE,
+      },
+      {
+        dsn: c.env?.SENTRY_DSN,
+        waitUntil: (() => {
+          try {
+            return c.executionCtx.waitUntil.bind(c.executionCtx);
+          } catch {
+            return undefined; // no execution context (tests)
+          }
+        })(),
+      },
+    );
     return sendError(c, 'internal_error', 'Internal server error');
   });
 

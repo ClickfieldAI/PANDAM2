@@ -1,4 +1,4 @@
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray } from 'drizzle-orm';
 
 import { newId } from '../id';
 import { type NewReportRow, type ReportRow, reports } from '../schema/reports';
@@ -15,6 +15,36 @@ export function reportsRepository(db: Database) {
         .values({ ...input, id: newId('report') })
         .returning();
       return one(rows, 'reports.create');
+    },
+
+    /** The reporter's still-live (open / being reviewed) report on this subject, if any. */
+    async findLive(
+      reporterId: string,
+      subjectType: ReportRow['subjectType'],
+      subjectId: string,
+    ): Promise<ReportRow | null> {
+      const rows = await db
+        .select()
+        .from(reports)
+        .where(
+          and(
+            eq(reports.reporterId, reporterId),
+            eq(reports.subjectType, subjectType),
+            eq(reports.subjectId, subjectId),
+            inArray(reports.status, ['open', 'reviewing']),
+          ),
+        )
+        .limit(1);
+      return rows[0] ?? null;
+    },
+
+    /** How many reports this user filed since `sinceMs` (for the daily cap). */
+    async countSince(reporterId: string, sinceMs: number): Promise<number> {
+      const rows = await db
+        .select({ id: reports.id })
+        .from(reports)
+        .where(and(eq(reports.reporterId, reporterId), gte(reports.createdAt, sinceMs)));
+      return rows.length;
     },
 
     /** Reports this user has filed — shown back to them on the account screen. */

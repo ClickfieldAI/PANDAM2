@@ -82,8 +82,17 @@ profilesRoute.post('/me/avatar', async (c) => {
   await bucket.put(objectKey, bytes, { httpMetadata: { contentType } });
 
   const previous = await repos.profiles.findByUserId(user.id);
-  const updated = await repos.profiles.update(user.id, { avatarKey: objectKey });
-  if (!updated) throw new ApiError('not_found', 'Profile not found.');
+  let updated;
+  try {
+    updated = await repos.profiles.update(user.id, { avatarKey: objectKey });
+  } catch (error) {
+    await bucket.delete(objectKey).catch(() => undefined); // leave nothing behind
+    throw error;
+  }
+  if (!updated) {
+    await bucket.delete(objectKey).catch(() => undefined);
+    throw new ApiError('not_found', 'Profile not found.');
+  }
 
   // Only bin the old object once the profile actually points at the new one,
   // so a failed update can never leave the profile referencing deleted bytes.

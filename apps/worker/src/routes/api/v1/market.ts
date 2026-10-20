@@ -36,7 +36,10 @@ import { mediaUrl, readUploadedImage, requireMedia } from '../../../lib/media';
 import { toMarketItem } from '../../../lib/serialize';
 import { parseBody, parseQuery } from '../../../lib/validate';
 import { authMiddleware, getAuth, requireAuth } from '../../../middleware/auth';
+import { hiddenOwnerIds } from '../../../services/blocks';
+import { alertListingMatches, type ListingForAlert } from '../../../services/listing-alerts';
 import { alertNeedMatches } from '../../../services/need-alerts';
+import { notify } from '../../../services/notify';
 import { type AppEnv } from '../../../types';
 
 type Kind = 'listing' | 'need';
@@ -122,7 +125,10 @@ export function createMarketRoute(kind: Kind) {
   route.get('/', authMiddleware, async (c) => {
     const q = parseQuery(c, discoverQuerySchema);
     const { discover } = repo(c);
+    // Never show people who blocked the viewer, or whom the viewer blocked.
+    const hidden = await hiddenOwnerIds(c, c.get('auth')?.user.id ?? null);
     const items = await discover({
+      excludeOwnerIds: [...hidden],
       categoryId: q.category,
       type: q.type,
       q: q.q,
@@ -166,6 +172,9 @@ export function createMarketRoute(kind: Kind) {
     if (cfg.kind === 'need' && created.status === 'published') {
       await alertNeedMatches(c, created);
     }
+    if (cfg.kind === 'listing' && created.status === 'published') {
+      await alertListingMatches(c, created as unknown as ListingForAlert);
+    }
     return sendOk(c, { item: toMarketItem(withRefs, cfg.kind) }, 201);
   });
 
@@ -174,8 +183,23 @@ export function createMarketRoute(kind: Kind) {
     const row = await repo(c).one(id);
     if (!row) throw new ApiError('not_found', `That ${cfg.kind} does not exist.`);
     const auth = c.get('auth');
+    // A blocked relationship (either way) makes the item vanish, like a missing one.
+    if ((await hiddenOwnerIds(c, auth?.user.id ?? null)).has(row.ownerId)) {
+      throw new ApiError('not_found', `That ${cfg.kind} does not exist.`);
+    }
+    if (!auth || auth.user.id !== row.ownerId) {
+      // A suspended owner's items are not visible to anyone else.
+      const owner = await c.get('ctx').repos.users.findById(row.ownerId);
+      if (owner?.status !== 'active') {
+        throw new ApiError('not_found', `That ${cfg.kind} does not exist.`);
+      }
+    }
     if (row.status !== 'published') {
       if (!auth || auth.user.id !== row.ownerId) {
+        throw new ApiError('not_found', `That ${cfg.kind} does not exist.`);
+      }
+      // Deleted-but-kept rows (they back old offers) are not viewable any more.
+      if ((await repo(c).crud.findById(id))?.deletedAt != null) {
         throw new ApiError('not_found', `That ${cfg.kind} does not exist.`);
       }
     }
@@ -197,7 +221,9 @@ export function createMarketRoute(kind: Kind) {
     const id = c.req.param('id');
     const { crud, one } = repo(c);
     const current = await crud.findById(id);
-    if (!current) throw new ApiError('not_found', `That ${cfg.kind} does not exist.`);
+    if (!current || current.deletedAt !== null) {
+      throw new ApiError('not_found', `That ${cfg.kind} does not exist.`);
+    }
     if (current.ownerId !== user.id) {
       throw new ApiError('forbidden', `You can only edit your own ${cfg.kind}s.`);
     }
@@ -221,19 +247,94 @@ export function createMarketRoute(kind: Kind) {
     const id = c.req.param('id');
     const { crud, one } = repo(c);
     const current = await crud.findById(id);
-    if (!current) throw new ApiError('not_found', `That ${cfg.kind} does not exist.`);
+    if (!current || current.deletedAt !== null) {
+      throw new ApiError('not_found', `That ${cfg.kind} does not exist.`);
+    }
     if (current.ownerId !== user.id) {
       throw new ApiError('forbidden', `You can only change your own ${cfg.kind}s.`);
     }
     const { status } = await parseBody(c, setListingStatusSchema);
+    if (current.moderationRemovedAt != null && status === 'published') {
+      throw new ApiError(
+        'forbidden',
+        `This ${cfg.kind} was removed by PANDAM moderators and cannot be published again. Reason: ${current.moderationReason ?? 'not given'}.`,
+      );
+    }
     await crud.setStatus(id, status);
     // Only the move INTO published alerts; re-publishing is a no-op because
     // `alertNeedMatches` also skips anyone already told about this request.
+    if (cfg.kind === 'listing' && status === 'published' && current.status !== 'published') {
+      await alertListingMatches(c, current as unknown as ListingForAlert);
+    }
     if (cfg.kind === 'need' && status === 'published' && current.status !== 'published') {
       await alertNeedMatches(c, current);
     }
     const withRefs = await one(id);
     return sendOk(c, { item: toMarketItem(withRefs!, cfg.kind) });
+  });
+
+  /**
+   * Delete an item the caller owns. A listing/request nobody ever made an offer
+   * on is removed for good (photos included); one with trade history is hidden
+   * but kept so past offers and trades still make sense; one in an OPEN trade
+   * cannot be deleted. Pending offers on it are withdrawn and the other side
+   * is told. See `repositories/item-lifecycle.ts`.
+   */
+  route.delete('/:id', authMiddleware, requireAuth, async (c) => {
+    const { user } = getAuth(c);
+    const { repos } = c.get('ctx');
+    const id = c.req.param('id');
+    const { crud } = repo(c);
+    const current = await crud.findById(id);
+    if (!current || current.deletedAt !== null) {
+      throw new ApiError('not_found', `That ${cfg.kind} does not exist.`);
+    }
+    if (current.ownerId !== user.id) {
+      throw new ApiError('forbidden', `You can only delete your own ${cfg.kind}s.`);
+    }
+    const life = repos.itemLifecycle;
+    if (await life.hasOpenTrade(cfg.kind, id)) {
+      throw new ApiError(
+        'unprocessable',
+        'This is part of a trade in progress. Finish or cancel the trade first.',
+      );
+    }
+
+    const imageKeys = await life.imageKeys(cfg.kind, id);
+    const withdrawn = await life.withdrawPendingOffers(cfg.kind, id);
+    const outcome = await life.deleteItem(cfg.kind, id, user.id);
+    if (outcome === 'blocked') {
+      throw new ApiError(
+        'unprocessable',
+        'This is part of a trade in progress. Finish or cancel the trade first.',
+      );
+    }
+    if (outcome === 'missing') {
+      throw new ApiError('not_found', `That ${cfg.kind} does not exist.`);
+    }
+
+    // Tell everyone whose pending offer just disappeared.
+    await Promise.all(
+      withdrawn.map((offer) =>
+        notify(c, {
+          userId: offer.fromUserId === user.id ? offer.toUserId : offer.fromUserId,
+          type: 'offer_cancelled',
+          data: { offerId: offer.id },
+        }),
+      ),
+    );
+
+    if (outcome === 'deleted') {
+      // The row (and its photo rows) are gone; remove the stored files too.
+      // Best effort: an orphaned object is invisible and costs almost nothing.
+      if (c.env.MEDIA) {
+        await Promise.all(imageKeys.map((key) => c.env.MEDIA!.delete(key).catch(() => undefined)));
+      }
+    } else if (cfg.kind === 'listing') {
+      // Hidden listings must not linger in anyone's saved list.
+      await repos.favourites.removeAllFor(id);
+    }
+    return sendOk(c, { deleted: true, outcome, withdrawnOffers: withdrawn.length });
   });
 
   // ------------------------------------------------------------- photos --
@@ -251,7 +352,9 @@ export function createMarketRoute(kind: Kind) {
     const { crud } = repo(c);
     const id = c.req.param('id');
     const item = id ? await crud.findById(id) : null;
-    if (!item) throw new ApiError('not_found', `That ${cfg.kind} does not exist.`);
+    if (!item || item.deletedAt !== null) {
+      throw new ApiError('not_found', `That ${cfg.kind} does not exist.`);
+    }
     if (item.ownerId !== user.id) {
       throw new ApiError('forbidden', `You can only change photos on your own ${cfg.kind}s.`);
     }
@@ -281,19 +384,27 @@ export function createMarketRoute(kind: Kind) {
     await bucket.put(objectKey, bytes, { httpMetadata: { contentType } });
 
     // R2 first, row second: a row that points at missing bytes would render
-    // as a broken image forever, whereas an orphaned object is invisible.
-    const image =
-      kind === 'listing'
-        ? await repos.listingImages.add({
-            listingId: item.id,
-            objectKey,
-            sortOrder: await repos.listingImages.nextSortOrder(item.id),
-          })
-        : await repos.needImages.add({
-            needId: item.id,
-            objectKey,
-            sortOrder: await repos.needImages.nextSortOrder(item.id),
-          });
+    // as a broken image forever, whereas an orphaned object is invisible. If the
+    // row cannot be written we remove the object we just stored, so a failed
+    // request leaves nothing behind.
+    let image;
+    try {
+      image =
+        kind === 'listing'
+          ? await repos.listingImages.add({
+              listingId: item.id,
+              objectKey,
+              sortOrder: await repos.listingImages.nextSortOrder(item.id),
+            })
+          : await repos.needImages.add({
+              needId: item.id,
+              objectKey,
+              sortOrder: await repos.needImages.nextSortOrder(item.id),
+            });
+    } catch (error) {
+      await bucket.delete(objectKey).catch(() => undefined);
+      throw error;
+    }
 
     return sendOk(
       c,

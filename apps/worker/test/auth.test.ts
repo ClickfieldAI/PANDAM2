@@ -23,7 +23,7 @@ async function body<T>(res: Response): Promise<T> {
 type Ok<T> = { ok: true; data: T };
 type Err = {
   ok: false;
-  error: { code: string; message: string; details?: Record<string, string[]> };
+  error: { code: string; message: string; details?: Record<string, string[]>; requestId?: string };
 };
 
 function register(app: ReturnType<TestDb['makeApp']>, patch: Record<string, unknown> = {}) {
@@ -136,7 +136,12 @@ describe('POST /api/v1/auth/login', () => {
     const wrongPw = await login(app, { password: 'still wrong 3' });
 
     expect(missing.status).toBe(wrongPw.status);
-    expect((await body<Err>(missing)).error).toEqual((await body<Err>(wrongPw)).error);
+    // Identical in everything a caller can learn from — only the per-request
+    // correlation id (different for every request by design) may differ.
+    const strip = ({ requestId: _requestId, ...rest }: Err['error']) => rest;
+    expect(strip((await body<Err>(missing)).error)).toEqual(
+      strip((await body<Err>(wrongPw)).error),
+    );
   });
 });
 

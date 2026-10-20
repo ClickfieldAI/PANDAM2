@@ -15,3 +15,10 @@ export const registerPushTokenSchema = z.object({
   platform: platformSchema,
 });
 export type RegisterPushTokenInput = z.infer<typeof registerPushTokenSchema>;
+
+export const notificationPreferencesSchema = z
+  .object({ pushEnabled: z.boolean().optional(), listingAlerts: z.boolean().optional() })
+  .strict()
+  .refine((v) => v.pushEnabled !== undefined || v.listingAlerts !== undefined, {
+    message: 'Send at least one setting.',
+  });

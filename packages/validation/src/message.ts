@@ -10,6 +10,8 @@ export const createMessageSchema = z
   .object({
     body: boundedString(0, 4000).optional(),
     imageKey: z.string().trim().min(1).optional(),
+    /** Retry id chosen by the sender's app (8-80 chars); a repeat returns the stored message. */
+    clientId: z.string().trim().min(8).max(80).optional(),
   })
   .refine((v) => !!v.body?.trim() || !!v.imageKey, {
     message: 'A message needs text or a photo.',

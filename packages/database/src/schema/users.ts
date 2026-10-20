@@ -4,7 +4,9 @@ import { index, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import {
   IDENTITY_VERIFICATION_STATUS,
   type IdentityVerificationStatus,
+  USER_ROLE,
   USER_STATUS,
+  type UserRole,
   type UserStatus,
 } from '../enums';
 
@@ -13,7 +15,9 @@ import { createdAt, idColumn, nullableTimestamp, updatedAt } from './_shared';
 export {
   IDENTITY_VERIFICATION_STATUS,
   type IdentityVerificationStatus,
+  USER_ROLE,
   USER_STATUS,
+  type UserRole,
   type UserStatus,
 };
 
@@ -31,6 +35,10 @@ export const users = sqliteTable(
     id: idColumn,
     email: text('email').notNull(),
     status: text('status', { enum: USER_STATUS }).notNull().default('active'),
+    /** Staff role. Only ever changed by an admin (or the documented DB bootstrap). */
+    role: text('role', { enum: USER_ROLE }).notNull().default('user'),
+    suspendedAt: nullableTimestamp('suspended_at'),
+    suspensionReason: text('suspension_reason'),
     /**
      * One-time identity verification (see apps/worker/src/services/verification.ts).
      * Only OUTCOMES are stored — never an ID number, document, OTP or image.

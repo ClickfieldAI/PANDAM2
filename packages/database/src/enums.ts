@@ -11,6 +11,10 @@
 export const USER_STATUS = ['active', 'suspended', 'deleted'] as const;
 export type UserStatus = (typeof USER_STATUS)[number];
 
+/** Staff roles. See docs/architecture/admin.md. */
+export const USER_ROLE = ['user', 'moderator', 'admin'] as const;
+export type UserRole = (typeof USER_ROLE)[number];
+
 /** Social sign-in providers PANDAM accepts, beyond email+password. */
 export const OAUTH_PROVIDER = ['google', 'apple'] as const;
 export type OAuthProvider = (typeof OAUTH_PROVIDER)[number];
@@ -53,7 +57,14 @@ export type PublicationStatus = (typeof PUBLICATION_STATUS)[number];
 export const MATCH_STATUS = ['candidate', 'dismissed'] as const;
 export type MatchStatus = (typeof MATCH_STATUS)[number];
 
-export const OFFER_STATUS = ['pending', 'accepted', 'rejected', 'cancelled', 'expired'] as const;
+export const OFFER_STATUS = [
+  'pending',
+  'accepted',
+  'rejected',
+  'cancelled',
+  'expired',
+  'countered',
+] as const;
 export type OfferStatus = (typeof OFFER_STATUS)[number];
 
 export const CONVERSATION_STATUS = ['active', 'archived'] as const;
@@ -77,11 +88,16 @@ export const NOTIFICATION_TYPE = [
   'offer_rejected',
   'offer_cancelled',
   'offer_expired',
+  'offer_countered',
   'message_received',
   'transaction_updated',
   'review_reminder',
   'review_received',
   'need_match',
+  'moderation_notice',
+  'report_update',
+  'listing_match',
+  'listing_saved',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPE)[number];
 

@@ -4,7 +4,7 @@ import { newId } from '../id';
 import { type PublicationStatus } from '../schema/_shared';
 import { type ListingRow, type NewListingRow, listings } from '../schema/listings';
 
-import { type Database, firstOrNull, one, touch } from './helpers';
+import { type Database, firstOrNull, one, touch, ownerIsActive } from './helpers';
 
 export type CreateListingInput = Omit<
   NewListingRow,
@@ -67,7 +67,10 @@ export function listingsRepository(db: Database) {
 
     /** Every published listing — the discovery/matching read path. */
     async listAllPublished(): Promise<ListingRow[]> {
-      return db.select().from(listings).where(eq(listings.status, 'published'));
+      return db
+        .select()
+        .from(listings)
+        .where(and(eq(listings.status, 'published'), ownerIsActive(listings.ownerId)));
     },
 
     /** Published listings in a category+type — the matching read path. */
@@ -81,6 +84,7 @@ export function listingsRepository(db: Database) {
         .where(
           and(
             eq(listings.status, 'published'),
+            ownerIsActive(listings.ownerId),
             eq(listings.categoryId, categoryId),
             eq(listings.type, type),
           ),

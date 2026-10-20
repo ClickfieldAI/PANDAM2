@@ -1,4 +1,4 @@
-import { index, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 import { ITEM_TYPE, PUBLICATION_STATUS, createdAt, idColumn, updatedAt } from './_shared';
 import { categories } from './categories';
@@ -23,6 +23,12 @@ export const needs = sqliteTable(
     title: text('title').notNull(),
     description: text('description').notNull(),
     status: text('status', { enum: PUBLICATION_STATUS }).notNull().default('draft'),
+    /** See `listings.deletedAt`. */
+    deletedAt: integer('deleted_at'),
+    /** Set when staff removed this item; the owner cannot re-publish while set. */
+    moderationRemovedAt: integer('moderation_removed_at'),
+    moderationReason: text('moderation_reason'),
+    moderationBy: text('moderation_by'),
     createdAt,
     updatedAt,
   },

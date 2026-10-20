@@ -8,7 +8,7 @@
  * listings and needs use separate select shapes rather than forcing one
  * generic shape to fit both.
  */
-import { and, asc, desc, eq, gte, inArray, lt, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNull, lt, notInArray, or, sql } from 'drizzle-orm';
 
 import { type ItemType, type PublicationStatus, type TransactionType } from '../enums';
 import { categories } from '../schema/categories';
@@ -18,7 +18,7 @@ import { needImages } from '../schema/need-images';
 import { needs } from '../schema/needs';
 import { profiles } from '../schema/profiles';
 
-import { type Database, firstOrNull } from './helpers';
+import { type Database, firstOrNull, ownerIsActive } from './helpers';
 
 export interface OwnerRef {
   id: string;
@@ -93,6 +93,8 @@ export interface DiscoverFilters {
    *  profile city. Barter means meeting in person, so "near me" is a city
    *  match rather than a radius — no coordinates are stored anywhere. */
   city?: string;
+  /** Owners whose items must not appear (people the viewer blocked or who blocked the viewer). */
+  excludeOwnerIds?: string[];
   /** Epoch ms — only rows with `createdAt >= since`. Home's recency filter;
    *  Discover (the full active marketplace) never sets this. */
   since?: number;
@@ -276,10 +278,11 @@ export function marketRepository(db: Database) {
 
   return {
     async discoverListings(f: DiscoverFilters): Promise<ListingWithRefs[]> {
-      const where = [eq(listings.status, 'published')];
+      const where = [eq(listings.status, 'published'), ownerIsActive(listings.ownerId)];
       if (f.categoryId) where.push(eq(listings.categoryId, f.categoryId));
       if (f.type) where.push(eq(listings.type, f.type));
       if (f.ownerId) where.push(eq(listings.ownerId, f.ownerId));
+      if (f.excludeOwnerIds?.length) where.push(notInArray(listings.ownerId, f.excludeOwnerIds));
       if (f.barterableOnly) where.push(sql`${listings.transactionType} <> 'sale'`);
       if (f.city && f.city.trim()) {
         where.push(sql`lower(${profiles.locationCity}) = ${f.city.trim().toLowerCase()}`);
@@ -311,10 +314,11 @@ export function marketRepository(db: Database) {
     },
 
     async discoverNeeds(f: DiscoverFilters): Promise<NeedWithRefs[]> {
-      const where = [eq(needs.status, 'published')];
+      const where = [eq(needs.status, 'published'), ownerIsActive(needs.ownerId)];
       if (f.categoryId) where.push(eq(needs.categoryId, f.categoryId));
       if (f.type) where.push(eq(needs.type, f.type));
       if (f.ownerId) where.push(eq(needs.ownerId, f.ownerId));
+      if (f.excludeOwnerIds?.length) where.push(notInArray(needs.ownerId, f.excludeOwnerIds));
       if (f.city && f.city.trim()) {
         where.push(sql`lower(${profiles.locationCity}) = ${f.city.trim().toLowerCase()}`);
       }
@@ -350,7 +354,7 @@ export function marketRepository(db: Database) {
         .from(listings)
         .innerJoin(profiles, eq(profiles.userId, listings.ownerId))
         .innerJoin(categories, eq(categories.id, listings.categoryId))
-        .where(eq(listings.ownerId, ownerId))
+        .where(and(eq(listings.ownerId, ownerId), isNull(listings.deletedAt)))
         .orderBy(desc(listings.createdAt), desc(listings.id))) as ListingFlat[];
       return withImages(rows);
     },
@@ -361,7 +365,7 @@ export function marketRepository(db: Database) {
         .from(needs)
         .innerJoin(profiles, eq(profiles.userId, needs.ownerId))
         .innerJoin(categories, eq(categories.id, needs.categoryId))
-        .where(eq(needs.ownerId, ownerId))
+        .where(and(eq(needs.ownerId, ownerId), isNull(needs.deletedAt)))
         .orderBy(desc(needs.createdAt), desc(needs.id))) as NeedFlat[];
       return withNeedImages(rows);
     },
@@ -430,7 +434,13 @@ export function marketRepository(db: Database) {
         .select({ city: profiles.locationCity, n: sql<number>`count(*)` })
         .from(listings)
         .innerJoin(profiles, eq(profiles.userId, listings.ownerId))
-        .where(and(eq(listings.status, 'published'), sql`${profiles.locationCity} is not null`))
+        .where(
+          and(
+            eq(listings.status, 'published'),
+            ownerIsActive(listings.ownerId),
+            sql`${profiles.locationCity} is not null`,
+          ),
+        )
         .groupBy(profiles.locationCity)
         .orderBy(sql`count(*) desc`)
         .limit(limit);

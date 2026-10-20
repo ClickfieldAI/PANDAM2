@@ -13,6 +13,12 @@ export const createReviewSchema = z.object({
 export type CreateReviewInput = z.infer<typeof createReviewSchema>;
 
 export const transactionStatusUpdateSchema = z.object({
-  action: z.enum(['start', 'complete', 'cancel']),
+  /**
+   * `confirm` — "the exchange happened" from the caller's side; the trade
+   * completes only once BOTH parties have confirmed. `complete` is the legacy
+   * name for the same thing (older app builds) — it can never complete a trade
+   * on one party's say-so. `start` is a legacy no-op for pre-existing rows.
+   */
+  action: z.enum(['start', 'complete', 'confirm', 'cancel']),
 });
 export type TransactionStatusUpdateInput = z.infer<typeof transactionStatusUpdateSchema>;

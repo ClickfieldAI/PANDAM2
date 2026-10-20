@@ -34,6 +34,12 @@ export const barterTransactions = sqliteTable(
       .notNull()
       .references(() => users.id, { onDelete: 'restrict' }),
     status: text('status', { enum: BARTER_TRANSACTION_STATUS }).notNull().default('created'),
+    /**
+     * Each party must confirm the exchange happened before it is `completed`.
+     * One party alone can never complete a trade.
+     */
+    initiatorConfirmedAt: nullableTimestamp('initiator_confirmed_at'),
+    counterpartyConfirmedAt: nullableTimestamp('counterparty_confirmed_at'),
     completedAt: nullableTimestamp('completed_at'),
     cancelledAt: nullableTimestamp('cancelled_at'),
     createdAt,

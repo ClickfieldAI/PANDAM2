@@ -28,7 +28,7 @@ export function contextMiddleware(deps: AppDeps = {}) {
   });
 }
 
-function extractToken(c: Context<AppEnv>): string | null {
+export function extractToken(c: Context<AppEnv>): string | null {
   const header = c.req.header('Authorization');
   if (header && header.toLowerCase().startsWith('bearer ')) {
     return header.slice(7).trim() || null;

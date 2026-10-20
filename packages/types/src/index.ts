@@ -44,6 +44,7 @@ import type {
   ReviewRow,
   SessionRow,
   TransactionType,
+  UserRole,
   UserRow,
   UserStatus,
   IdentityVerificationStatus,
@@ -121,6 +122,7 @@ export type {
   ReportStatus,
   ReportSubjectType,
   TransactionType,
+  UserRole,
   UserStatus,
   IdentityVerificationStatus,
 };
@@ -141,6 +143,8 @@ export interface ApiErr {
     message: string;
     /** Optional field-level details, e.g. from Zod validation. */
     details?: Record<string, string[]>;
+    /** Identifies this request in server logs and crash reports. */
+    requestId?: string;
   };
 }
 
@@ -164,6 +168,8 @@ export interface SafeUser {
   id: string;
   email: string;
   status: UserStatus;
+  /** Staff role. Drives which admin screens show; the server enforces it regardless. */
+  role: UserRole;
   createdAt: number;
   updatedAt: number;
   /** First-time identity verification progress. Outcomes only — no ID data. */
@@ -340,6 +346,10 @@ export interface OfferView {
   conversationId: string | null;
   message: string | null;
   matchId: string | null;
+  /** The offer this one is a counter to, if any. */
+  parentOfferId: string | null;
+  /** The counter-offer that answered this one (only when `status` is `countered`). */
+  counterOfferId: string | null;
   expiresAt: number | null;
   respondedAt: number | null;
   createdAt: number;
@@ -359,6 +369,8 @@ export interface ConversationView {
   lastMessage: MessageView | null;
   /** True if the caller has unread messages in this conversation. */
   unread: boolean;
+  /** How many messages from the other person the caller has not read yet. */
+  unreadCount: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -374,6 +386,15 @@ export interface MessageView {
   imageUrl: string | null;
   createdAt: number;
   editedAt: number | null;
+  /**
+   * Only on the caller's OWN messages: the id their app chose for this message
+   * (lets the app match a stored message to the one it queued), and whether
+   * every other participant has read up to it. `readByRecipient` is true only
+   * when the recipient's read marker proves it — there is no "delivered" state
+   * because nothing acknowledges delivery to a device.
+   */
+  clientId?: string | null;
+  readByRecipient?: boolean;
 }
 
 /** `GET /api/v1/conversations/:id/typing` — whether any other participant is
@@ -399,6 +420,15 @@ export interface BarterTransactionView {
   youGot: ItemRef;
   /** Whether the caller has already reviewed this transaction. */
   reviewedByMe: boolean;
+  /** Both parties must confirm before the trade completes. */
+  confirmedByMe: boolean;
+  confirmedByCounterparty: boolean;
+  /** Append-only history, oldest first. `actorIsMe` is null for system actions. */
+  events: {
+    type: 'accepted' | 'confirmed' | 'completed' | 'cancelled';
+    actorIsMe: boolean | null;
+    createdAt: number;
+  }[];
   completedAt: number | null;
   cancelledAt: number | null;
   createdAt: number;
@@ -424,8 +454,23 @@ export interface NotificationView {
   type: NotificationType;
   /** Related ids (offerId, transactionId, ...), parsed from the stored JSON. */
   data: Record<string, string>;
+  /** Readable copy written by the server. Null on rows created before it existed. */
+  title: string | null;
+  body: string | null;
   read: boolean;
   createdAt: number;
+}
+
+export interface NotificationPage {
+  items: NotificationView[];
+  /** Pass back as `cursor` for the next (older) page; null when there is no more. */
+  nextCursor: string | null;
+  unreadCount: number;
+}
+
+export interface NotificationPreferences {
+  pushEnabled: boolean;
+  listingAlerts: boolean;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -518,4 +563,104 @@ export interface DemoRevenueSummary {
   netAmount: number;
   byTier: { tierLabel: string; count: number; feeAmount: number }[];
   recent: DemoFeeTransactionView[];
+}
+
+/* -------------------------------------------------------------------------- */
+/* Blocking                                                                    */
+/* -------------------------------------------------------------------------- */
+
+/** One person the caller has blocked. Only the blocker ever sees this. */
+export interface BlockedUserView {
+  user: OwnerRef;
+  blockedAt: number;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Admin / moderation (staff only — see docs/architecture/admin.md)            */
+/* -------------------------------------------------------------------------- */
+
+export interface AdminUserView {
+  id: string;
+  email: string;
+  role: UserRole;
+  status: UserStatus;
+  displayName: string | null;
+  username: string | null;
+  suspendedAt: number | null;
+  suspensionReason: string | null;
+  createdAt: number;
+}
+
+/** What a reported thing is right now (the snapshot is what it was then). */
+export interface AdminSubjectState {
+  exists: boolean;
+  /** Listing/need title, user display name, or message excerpt. */
+  label: string | null;
+  ownerId: string | null;
+  status: string | null;
+  takenDown: boolean;
+}
+
+export interface AdminReportView {
+  id: string;
+  reporterId: string;
+  subjectType: ReportSubjectType;
+  subjectId: string;
+  reason: ReportReason;
+  details: string | null;
+  snapshot: Record<string, unknown> | null;
+  status: ReportStatus;
+  reviewedBy: string | null;
+  reviewedAt: number | null;
+  resolutionNote: string | null;
+  createdAt: number;
+}
+
+export interface AdminReportDetail extends AdminReportView {
+  reporter: AdminUserView | null;
+  subject: AdminSubjectState;
+  /** Other reports about the same subject. */
+  related: { id: string; status: ReportStatus; reason: ReportReason; createdAt: number }[];
+}
+
+export interface AdminItemView {
+  id: string;
+  kind: 'listing' | 'need';
+  ownerId: string;
+  title: string;
+  status: PublicationStatus;
+  removedAt: number | null;
+  removedReason: string | null;
+  removedBy: string | null;
+}
+
+export interface AdminTransactionView {
+  id: string;
+  status: BarterTransactionStatus;
+  offerId: string;
+  initiatedBy: string;
+  counterparty: string;
+  initiatorConfirmed: boolean;
+  counterpartyConfirmed: boolean;
+  createdAt: number;
+  completedAt: number | null;
+  cancelledAt: number | null;
+}
+
+export interface AdminTransactionDetail extends AdminTransactionView {
+  offeredItem: { kind: string; id: string; title: string | null } | null;
+  requestedItem: { kind: string; id: string; title: string | null } | null;
+  events: { type: string; actorId: string | null; createdAt: number }[];
+  disputes: { id: string; status: DisputeStatus; reason: string; createdAt: number }[];
+}
+
+export interface AdminAuditView {
+  id: string;
+  actorId: string;
+  action: string;
+  targetType: string;
+  targetId: string;
+  reason: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: number;
 }

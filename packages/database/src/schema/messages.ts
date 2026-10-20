@@ -1,4 +1,4 @@
-import { index, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 import { createdAt, idColumn, nullableTimestamp } from './_shared';
 import { conversations } from './conversations';
@@ -23,11 +23,20 @@ export const messages = sqliteTable(
     body: text('body').notNull(),
     /** R2 object key for an attached photo, or `null` for a text-only message. */
     imageKey: text('image_key'),
+    /**
+     * Chosen by the sender's app for each message it composes. (sender, clientId)
+     * is unique, so re-sending the same message (a retry after a lost response,
+     * a restart with an unsent outbox) can never store it twice.
+     */
+    clientId: text('client_id'),
     createdAt,
     editedAt: nullableTimestamp('edited_at'),
     deletedAt: nullableTimestamp('deleted_at'),
   },
-  (t) => [index('messages_conversation_idx').on(t.conversationId, t.createdAt)],
+  (t) => [
+    index('messages_conversation_idx').on(t.conversationId, t.createdAt),
+    uniqueIndex('messages_client_id_unique').on(t.senderId, t.clientId),
+  ],
 );
 
 export type MessageRow = typeof messages.$inferSelect;

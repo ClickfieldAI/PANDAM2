@@ -1,4 +1,5 @@
-import { index, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
+import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 import {
   REPORT_REASON,
@@ -37,7 +38,17 @@ export const reports = sqliteTable(
     subjectId: text('subject_id').notNull(),
     reason: text('reason', { enum: REPORT_REASON }).notNull(),
     details: text('details'),
+    /**
+     * What the reported thing looked like when it was reported (JSON: title /
+     * message excerpt / names). Content can be edited or deleted afterwards;
+     * this keeps the evidence a reviewer needs.
+     */
+    subjectSnapshot: text('subject_snapshot'),
     status: text('status', { enum: REPORT_STATUS }).notNull().default('open'),
+    /** Staff review: who, when, and the note recorded with the decision. */
+    reviewedBy: text('reviewed_by'),
+    reviewedAt: integer('reviewed_at'),
+    resolutionNote: text('resolution_note'),
     createdAt,
     updatedAt,
   },
@@ -45,6 +56,11 @@ export const reports = sqliteTable(
     index('reports_subject_idx').on(t.subjectType, t.subjectId),
     index('reports_status_idx').on(t.status),
     index('reports_reporter_idx').on(t.reporterId),
+    // One live report per (reporter, subject): re-reporting the same thing
+    // returns the existing one instead of piling up duplicates.
+    uniqueIndex('reports_live_unique')
+      .on(t.reporterId, t.subjectType, t.subjectId)
+      .where(sql`${t.status} IN ('open', 'reviewing')`),
   ],
 );
 

@@ -9,12 +9,17 @@
  */
 import { type Database } from '../client';
 
+import { adminRepository } from './admin';
+import { barterEngineRepository } from './barter-engine';
 import { barterTransactionsRepository } from './barter-transactions';
+import { blocksRepository } from './blocks';
 import { categoriesRepository } from './categories';
 import { conversationsRepository } from './conversations';
 import { credentialsRepository } from './credentials';
 import { demoFeeTransactionsRepository } from './demo-fee-transactions';
 import { disputesRepository } from './disputes';
+import { favouritesRepository } from './favourites';
+import { itemLifecycleRepository } from './item-lifecycle';
 import { itemViewsRepository } from './item-views';
 import { listingImagesRepository } from './listing-images';
 import { listingsRepository } from './listings';
@@ -29,6 +34,7 @@ import { offersRepository } from './offers';
 import { paymentsRepository } from './payments';
 import { profilesRepository } from './profiles';
 import { pushTokensRepository } from './push-tokens';
+import { rateLimitsRepository } from './rate-limits';
 import { reportsRepository } from './reports';
 import { reviewsRepository } from './reviews';
 import { sessionsRepository } from './sessions';
@@ -36,6 +42,7 @@ import { usersRepository } from './users';
 
 export function createRepositories(db: Database) {
   return {
+    admin: adminRepository(db),
     users: usersRepository(db),
     credentials: credentialsRepository(db),
     oauthIdentities: oauthIdentitiesRepository(db),
@@ -52,6 +59,7 @@ export function createRepositories(db: Database) {
     conversations: conversationsRepository(db),
     messages: messagesRepository(db),
     barterTransactions: barterTransactionsRepository(db),
+    barterEngine: barterEngineRepository(db),
     reviews: reviewsRepository(db),
     notifications: notificationsRepository(db),
     pushTokens: pushTokensRepository(db),
@@ -59,6 +67,10 @@ export function createRepositories(db: Database) {
     disputes: disputesRepository(db),
     payments: paymentsRepository(db),
     demoFeeTransactions: demoFeeTransactionsRepository(db),
+    favourites: favouritesRepository(db),
+    blocks: blocksRepository(db),
+    rateLimits: rateLimitsRepository(db),
+    itemLifecycle: itemLifecycleRepository(db),
     itemViews: itemViewsRepository(db),
   };
 }

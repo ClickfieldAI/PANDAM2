@@ -16,15 +16,20 @@ import { loginSchema, oauthLoginSchema, registerSchema } from '@pandam/validatio
 import { Hono } from 'hono';
 
 import { clearSessionCookie, setSessionCookie } from '../../../lib/cookies';
-import { sendOk } from '../../../lib/http';
+import { ApiError, sendOk } from '../../../lib/http';
 import { verifyAppleIdToken, verifyGoogleIdToken } from '../../../lib/oauth';
 import { toPublicProfile, toSafeUser } from '../../../lib/serialize';
 import { parseBody } from '../../../lib/validate';
 import { authMiddleware, getAuth, requireAuth } from '../../../middleware/auth';
+import { clientIp, consume, enforce, isOverLimit } from '../../../middleware/rate-limit';
 import { createAuthService } from '../../../services/auth';
 import { type AppEnv } from '../../../types';
 
 export const authRoute = new Hono<AppEnv>();
+
+/** Failed sign-ins allowed per account + address in a window before it is paused. */
+const LOGIN_FAILURES = 8;
+const LOGIN_WINDOW_SEC = 15 * 60;
 
 authRoute.post('/register', async (c) => {
   const input = await parseBody(c, registerSchema);
@@ -51,9 +56,22 @@ authRoute.post('/login', async (c) => {
   const { repos } = c.get('ctx');
   const service = createAuthService(repos);
 
-  const { user, session, token } = await service.login(input, {
-    userAgent: c.req.header('User-Agent') ?? null,
-  });
+  // Brute-force guard: count only FAILED sign-ins, per account AND per caller
+  // address. Keying on both means someone hammering a victim's email from their
+  // own address locks out themselves, not the real owner on another network.
+  const failKey = `auth.login.fail:${input.email.toLowerCase()}:${clientIp(c) ?? '-'}`;
+  enforce(c, await isOverLimit(c, failKey, LOGIN_FAILURES, LOGIN_WINDOW_SEC));
+
+  let result;
+  try {
+    result = await service.login(input, { userAgent: c.req.header('User-Agent') ?? null });
+  } catch (error) {
+    if (error instanceof ApiError && error.code === 'unauthorized') {
+      await consume(c, failKey, LOGIN_FAILURES, LOGIN_WINDOW_SEC);
+    }
+    throw error;
+  }
+  const { user, session, token } = result;
   const profile = await repos.profiles.findByUserId(user.id);
 
   setSessionCookie(c, token, session.expiresAt);
