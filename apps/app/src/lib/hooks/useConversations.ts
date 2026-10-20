@@ -34,7 +34,7 @@ export function useMessages(conversationId: string | undefined) {
 export function useSendMessage(conversationId: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: { body?: string; imageKey?: string }) =>
+    mutationFn: (input: { body?: string; imageKey?: string; clientId?: string }) =>
       conversationsApi.sendMessage(conversationId, input),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: qk.conversations.messages(conversationId) });

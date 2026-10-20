@@ -32,7 +32,7 @@ import { IS_DEMO_DATA, demoItem, demoMergeList, demoMyListings, demoQuery } from
 import { ApiError } from '@/lib/api/client';
 import { primaryImage, uploadOfferImage } from '@/lib/api/media';
 import { TYPE_LABEL } from '@/lib/format';
-import { useCreateOffer } from '@/lib/hooks/useOffers';
+import { useCounterOffer, useCreateOffer } from '@/lib/hooks/useOffers';
 import { useItem, useMyItems } from '@/lib/hooks/useMarket';
 import { categoryIcon } from '@/lib/icons';
 
@@ -132,7 +132,13 @@ export default function NewOfferScreen() {
   const colors = useThemeColors();
 
   const router = useRouter();
-  const params = useLocalSearchParams<{ requestedListingId?: string; requestedNeedId?: string }>();
+  const params = useLocalSearchParams<{
+    requestedListingId?: string;
+    requestedNeedId?: string;
+    /** Set when answering an offer with a counter-offer instead of starting a new one. */
+    counterOf?: string;
+  }>();
+  const counterOf = params.counterOf ?? null;
   const kind: 'listing' | 'need' = params.requestedNeedId ? 'need' : 'listing';
   const targetId = (kind === 'need' ? params.requestedNeedId : params.requestedListingId) ?? '';
   const liveRequested = useItem(kind, targetId);
@@ -140,6 +146,7 @@ export default function NewOfferScreen() {
   const requested = demoRequested ? demoQuery(liveRequested, demoRequested) : liveRequested;
   const mine = demoMergeList(useMyItems('listing'), demoMyListings);
   const create = useCreateOffer();
+  const counter = useCounterOffer();
   const motionOK = useMotionOK();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -204,13 +211,14 @@ export default function NewOfferScreen() {
 
   const formError =
     uploadError ??
-    (create.error instanceof ApiError
-      ? create.error.message
-      : create.error
-        ? 'Could not send the offer. Check your connection and try again.'
-        : null);
+    ((e) =>
+      e instanceof ApiError
+        ? e.message
+        : e
+          ? 'Could not send the offer. Check your connection and try again.'
+          : null)(counterOf ? counter.error : create.error);
 
-  const busy = uploading || create.isPending;
+  const busy = uploading || create.isPending || counter.isPending;
 
   const submit = async () => {
     if (!selectedId || !requested.data || !targetIsReal || busy || sentOffer) return;
@@ -234,6 +242,27 @@ export default function NewOfferScreen() {
       } finally {
         setUploading(false);
       }
+    }
+    if (counterOf) {
+      // A counter answers an existing offer; the server enforces who may send it
+      // and what it may contain. Success is only shown once the server confirms.
+      counter.mutate(
+        {
+          id: counterOf,
+          input: {
+            offeredListingId: selectedId,
+            requestedListingId: targetId,
+            message: message.trim() || undefined,
+          },
+        },
+        {
+          onSuccess: ({ offer }) => {
+            setSentOffer(offer);
+            doneTimer.current = setTimeout(() => setShowDone(true), motionOK ? 1300 : 300);
+          },
+        },
+      );
+      return;
     }
     create.mutate(
       {
@@ -282,10 +311,12 @@ export default function NewOfferScreen() {
             </View>
             <Stack gap="xs" align="center">
               <Text variant="display" center>
-                Offer Sent
+                {counterOf ? 'Counter Sent' : 'Offer Sent'}
               </Text>
               <Text variant="body" tone="secondary" center>
-                Your trade offer has been sent to {name}. You can chat while they decide.
+                {counterOf
+                  ? `Your counter-offer has been sent to ${name}. Your first answer is now closed.`
+                  : `Your trade offer has been sent to ${name}. You can chat while they decide.`}
               </Text>
             </Stack>
             <Card padded style={{ alignSelf: 'stretch' }}>
@@ -355,9 +386,11 @@ export default function NewOfferScreen() {
                 ? 'Sent'
                 : uploading
                   ? 'Uploading photo…'
-                  : create.isPending
+                  : create.isPending || counter.isPending
                     ? 'Sending…'
-                    : 'Send offer'
+                    : counterOf
+                      ? 'Send counter-offer'
+                      : 'Send offer'
             }
             size="lg"
             fullWidth
@@ -391,11 +424,13 @@ export default function NewOfferScreen() {
         }}
       >
         <AppHeader
-          title="Offer a trade"
+          title={counterOf ? 'Counter-offer' : 'Offer a trade'}
           subtitle={
-            kind === 'need'
-              ? `Offer ${ownerName ? `${ownerName.split(' ')[0]} ` : ''}something for their request.`
-              : 'Goods for goods — no money changes hands.'
+            counterOf
+              ? 'Choose what you would give instead. Their original offer is closed once you send this.'
+              : kind === 'need'
+                ? `Offer ${ownerName ? `${ownerName.split(' ')[0]} ` : ''}something for their request.`
+                : 'Goods for goods — no money changes hands.'
           }
           back
         />
@@ -461,74 +496,77 @@ export default function NewOfferScreen() {
           </View>
 
           {/* ------------------------------------------------ optional photo -- */}
-          <View style={{ gap: spacing.sm }}>
-            <View style={{ gap: 2 }}>
-              <Text variant="h3">Add a photo</Text>
-              <Text variant="bodySm" tone="secondary">
-                Optional — show what you&apos;re offering or an example of your work.
-              </Text>
-            </View>
-            {photo ? (
-              <View style={{ width: 120, height: 120 }}>
-                <Image
-                  source={{ uri: photo }}
+          {/* A counter carries no photo: the server ignores attachments on it. */}
+          {!counterOf ? (
+            <View style={{ gap: spacing.sm }}>
+              <View style={{ gap: 2 }}>
+                <Text variant="h3">Add a photo</Text>
+                <Text variant="bodySm" tone="secondary">
+                  Optional — show what you&apos;re offering or an example of your work.
+                </Text>
+              </View>
+              {photo ? (
+                <View style={{ width: 120, height: 120 }}>
+                  <Image
+                    source={{ uri: photo }}
+                    style={{
+                      width: 120,
+                      height: 120,
+                      borderRadius: radii.lg,
+                      backgroundColor: colors.surfaceMuted,
+                    }}
+                    resizeMode="cover"
+                    accessibilityLabel="Photo attached to your offer"
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Remove photo"
+                    onPress={removePhoto}
+                    hitSlop={10}
+                    style={{
+                      position: 'absolute',
+                      top: -8,
+                      right: -8,
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: colors.surfaceInverse,
+                      borderWidth: 2,
+                      borderColor: colors.surface,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Ionicons name="close" size={15} color={colors.textInverse} />
+                  </Pressable>
+                </View>
+              ) : (
+                <Press
+                  scale="sm"
+                  accessibilityRole="button"
+                  accessibilityLabel="Add a photo"
+                  onPress={() => void pickPhoto()}
                   style={{
                     width: 120,
                     height: 120,
                     borderRadius: radii.lg,
-                    backgroundColor: colors.surfaceMuted,
-                  }}
-                  resizeMode="cover"
-                  accessibilityLabel="Photo attached to your offer"
-                />
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Remove photo"
-                  onPress={removePhoto}
-                  hitSlop={10}
-                  style={{
-                    position: 'absolute',
-                    top: -8,
-                    right: -8,
-                    width: 28,
-                    height: 28,
-                    borderRadius: 14,
-                    backgroundColor: colors.surfaceInverse,
-                    borderWidth: 2,
-                    borderColor: colors.surface,
+                    borderWidth: 1.5,
+                    borderStyle: 'dashed',
+                    borderColor: colors.accentBorder,
+                    backgroundColor: colors.accentSoft,
                     alignItems: 'center',
                     justifyContent: 'center',
+                    gap: 4,
                   }}
                 >
-                  <Ionicons name="close" size={15} color={colors.textInverse} />
-                </Pressable>
-              </View>
-            ) : (
-              <Press
-                scale="sm"
-                accessibilityRole="button"
-                accessibilityLabel="Add a photo"
-                onPress={() => void pickPhoto()}
-                style={{
-                  width: 120,
-                  height: 120,
-                  borderRadius: radii.lg,
-                  borderWidth: 1.5,
-                  borderStyle: 'dashed',
-                  borderColor: colors.accentBorder,
-                  backgroundColor: colors.accentSoft,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 4,
-                }}
-              >
-                <Ionicons name="camera-outline" size={24} color={colors.accent} />
-                <Text variant="caption" tone="accent" style={{ fontWeight: '700' }}>
-                  Add photo
-                </Text>
-              </Press>
-            )}
-          </View>
+                  <Ionicons name="camera-outline" size={24} color={colors.accent} />
+                  <Text variant="caption" tone="accent" style={{ fontWeight: '700' }}>
+                    Add photo
+                  </Text>
+                </Press>
+              )}
+            </View>
+          ) : null}
 
           {selected && requested.data ? (
             <Notice

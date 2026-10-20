@@ -4,6 +4,7 @@ import { View } from 'react-native';
 
 import {
   Avatar,
+  CountBadge,
   EmptyState,
   GroupedList,
   ListRow,
@@ -11,7 +12,6 @@ import {
   SkeletonList,
   Text,
   layout,
-  radii,
   spacing,
   useThemeColors,
 } from '@pandam/ui';
@@ -85,26 +85,19 @@ export default function MessagesScreen() {
                     trailing slot, so the eye finds it on the same scan that
                     reads who the message is from.
                   */}
-                  {item.unread ? (
-                    <View
-                      style={{
-                        position: 'absolute',
-                        top: -1,
-                        right: -1,
-                        width: 12,
-                        height: 12,
-                        borderRadius: radii.pill,
-                        backgroundColor: colors.need,
-                        borderWidth: 2,
-                        borderColor: colors.surface,
-                      }}
+                  {item.unreadCount > 0 ? (
+                    <CountBadge
+                      value={item.unreadCount}
+                      color={colors.need}
+                      ringColor={colors.surface}
+                      style={{ position: 'absolute', top: -6, right: -6 }}
                     />
                   ) : null}
                 </View>
               }
               title={name}
               subtitle={preview}
-              emphasis={item.unread}
+              emphasis={item.unreadCount > 0}
               trailing={
                 <Text variant="caption" tone="faint">
                   {timeAgo(item.updatedAt)}

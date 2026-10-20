@@ -15,6 +15,7 @@ export const OFFER_STATUS_LABEL: Record<OfferStatus, string> = {
   rejected: 'Declined',
   cancelled: 'Withdrawn',
   expired: 'Expired',
+  countered: 'Countered',
 };
 
 const makePill = (
@@ -25,6 +26,7 @@ const makePill = (
   rejected: { bg: colors.dangerSoft, fg: colors.dangerText, dot: colors.danger },
   cancelled: { bg: colors.surfaceMuted, fg: colors.textSecondary, dot: colors.textMuted },
   expired: { bg: colors.surfaceMuted, fg: colors.textSecondary, dot: colors.textMuted },
+  countered: { bg: colors.infoSoft, fg: colors.infoText, dot: colors.info },
 });
 
 /** The small rounded status badge with a dot (Accepted = green, as in the reference). */

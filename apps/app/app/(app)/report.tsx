@@ -2,9 +2,10 @@
  * Report something. Reached with `?subjectType=…&subjectId=…&label=…`, so one
  * screen serves listings, needs, users, messages and transactions.
  *
- * It is honest about what happens next: a report is reviewed by a person and
- * does not hide anything on its own. Promising an instant takedown would be a
- * lie, and a report button that appears to do nothing is worse than none.
+ * It is honest about what happens next: a report is recorded with the evidence
+ * as it looked at the time, and it does not hide anything on its own. There is
+ * no review team behind it yet, so it never promises a response or a takedown —
+ * and for a person it offers the one thing that works immediately: blocking.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,6 +32,7 @@ import {
 
 import { AppHeader } from '@/components/AppHeader';
 import { ApiError } from '@/lib/api/client';
+import { useBlockUser, useBlockedUsers } from '@/lib/hooks/useBlocks';
 import { useCreateReport } from '@/lib/hooks/useReports';
 
 type Reason = CreateReportInput['reason'];
@@ -68,6 +70,8 @@ export default function ReportScreen() {
     label?: string;
   }>();
   const create = useCreateReport();
+  const blockUser = useBlockUser();
+  const blocked = useBlockedUsers();
 
   const { control, handleSubmit, watch } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -94,6 +98,8 @@ export default function ReportScreen() {
   }
 
   const noun = SUBJECT_NOUN[subject.data.subjectType];
+  const isBlocked =
+    blockUser.isSuccess || (blocked.data ?? []).some((b) => b.user.id === subject.data.subjectId);
   const errorMessage =
     create.error instanceof ApiError
       ? create.error.message
@@ -109,11 +115,13 @@ export default function ReportScreen() {
         details: values.details.trim() ? values.details.trim() : undefined,
       },
       {
-        onSuccess: () => {
+        onSuccess: (res) => {
           haptic.success();
           Alert.alert(
-            'Report sent',
-            'Thank you. A person will review this. Nothing is hidden automatically, so you may still see it in the meantime.',
+            res.duplicate ? 'Already reported' : 'Report saved',
+            res.duplicate
+              ? 'You have already reported this and it is still open, so nothing new was added.'
+              : 'Thank you — your report has been recorded. It does not hide anything by itself, so you may still see this in the meantime.',
             [{ text: 'Done', onPress: goBack }],
           );
         },
@@ -221,6 +229,43 @@ export default function ReportScreen() {
             )}
           />
 
+          {subject.data.subjectType === 'user' ? (
+            <Stack gap="sm">
+              <Text variant="h3">Stop contact now</Text>
+              {isBlocked ? (
+                <Notice
+                  kind="success"
+                  icon={<Ionicons name="checkmark-circle" size={16} color={colors.accent} />}
+                >
+                  You have blocked this person. They cannot message or trade with you, and you will
+                  not see each other&apos;s listings. You can undo this under Profile → Blocked
+                  people.
+                </Notice>
+              ) : (
+                <>
+                  <Text variant="bodySm" tone="secondary">
+                    Blocking takes effect immediately and they are not told. Offers waiting between
+                    you are withdrawn; a trade you already agreed is not cancelled.
+                  </Text>
+                  <Button
+                    label="Block this person"
+                    variant="secondary"
+                    loading={blockUser.isPending}
+                    onPress={() => blockUser.mutate(subject.data.subjectId)}
+                    leftIcon={<Ionicons name="ban-outline" size={16} color={colors.textPrimary} />}
+                  />
+                  {blockUser.error ? (
+                    <Text variant="caption" tone="danger">
+                      {blockUser.error instanceof ApiError
+                        ? blockUser.error.message
+                        : 'Could not block them. Try again.'}
+                    </Text>
+                  ) : null}
+                </>
+              )}
+            </Stack>
+          ) : null}
+
           {errorMessage ? (
             <Notice
               kind="danger"
@@ -234,9 +279,9 @@ export default function ReportScreen() {
             kind="neutral"
             icon={<Ionicons name="information-circle-outline" size={15} color={colors.textMuted} />}
           >
-            Reports are read by a person, not acted on automatically — nothing disappears the moment
-            you send this. If you are in immediate danger, contact your local emergency services
-            rather than us.
+            Your report is saved with what it looked like today. It is not acted on automatically,
+            and PANDAM does not promise a reply yet. If you are in immediate danger, contact your
+            local emergency services rather than us.
           </Notice>
         </Stack>
       </ScrollView>

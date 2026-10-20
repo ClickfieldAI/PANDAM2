@@ -1,5 +1,5 @@
 /** TanStack Query hooks for barter offers. */
-import { type CreateOfferInput } from '@pandam/validation';
+import { type CounterOfferInput, type CreateOfferInput } from '@pandam/validation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { offersApi, type OfferAction } from '@/lib/api/offers';
@@ -43,6 +43,24 @@ export function useCreateOffer() {
   return useMutation({
     mutationFn: (input: CreateOfferInput) => offersApi.create(input),
     onSuccess: () => invalidateOfferGraphs(client),
+  });
+}
+
+export function useCounterOffer() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: CounterOfferInput }) =>
+      offersApi.counter(id, input),
+    onSuccess: () => invalidateOfferGraphs(client),
+  });
+}
+
+/** The whole negotiation (original offer and every counter), oldest first. */
+export function useOfferHistory(id: string | undefined) {
+  return useQuery({
+    queryKey: [...qk.offers.detail(id ?? ''), 'history'] as const,
+    queryFn: async () => (await offersApi.history(id!)).items,
+    enabled: !!id,
   });
 }
 

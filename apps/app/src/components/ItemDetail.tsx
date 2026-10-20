@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Linking, ScrollView, View } from 'react-native';
+import { Alert, Linking, Platform, ScrollView, View } from 'react-native';
 
 import { type PublicationStatus } from '@pandam/types';
 import {
@@ -26,6 +26,7 @@ import {
   shadows,
   spacing,
   useThemeColors,
+  useToast,
 } from '@pandam/ui';
 
 import { ErrorState } from '@/components/states';
@@ -36,7 +37,7 @@ import { mediaSrc } from '@/lib/api/media';
 import { useSession } from '@/lib/auth/hooks';
 import { STATUS_LABEL, TYPE_LABEL, formatMoney, statusBadgeKind, timeAgo } from '@/lib/format';
 import { useIncomingOffers } from '@/lib/hooks/useOffers';
-import { useItem, useSetItemStatus } from '@/lib/hooks/useMarket';
+import { useDeleteItem, useItem, useSetItemStatus } from '@/lib/hooks/useMarket';
 import { useCreatePayment } from '@/lib/hooks/usePayments';
 import { categoryIcon, typeIcon } from '@/lib/icons';
 
@@ -84,6 +85,8 @@ export function ItemDetail({ kind, id }: { kind: MarketKind; id: string }) {
   const demo = IS_DEMO_DATA ? demoItem(id) : undefined;
   const query = demo ? demoQuery(liveQuery, demo) : liveQuery;
   const setStatus = useSetItemStatus(kind);
+  const deleteItem = useDeleteItem(kind);
+  const toast = useToast();
   const createPayment = useCreatePayment();
   const isHave = kind === 'listing';
 
@@ -118,6 +121,43 @@ export function ItemDetail({ kind, id }: { kind: MarketKind; id: string }) {
         router.push(`/(app)/payment/${res.payment.id}`);
       },
     });
+  };
+
+  /* Deleting asks first. The wording says what will actually happen: an item
+     nobody ever made an offer on is removed for good; one with trade history is
+     hidden but kept so those trades still make sense. */
+  const doDelete = () => {
+    if (!item) return;
+    deleteItem.mutate(item.id, {
+      onSuccess: (res) => {
+        toast.success(
+          res.outcome === 'deleted'
+            ? 'Deleted.'
+            : 'Removed. It is hidden now; your past trades keep a record of it.',
+        );
+        router.replace('/(app)/(tabs)/profile');
+      },
+      onError: (e) =>
+        toast.error(e instanceof ApiError ? e.message : 'Could not delete this. Try again.'),
+    });
+  };
+  const confirmDelete = () => {
+    const title = isHave ? 'Delete this listing?' : 'Delete this request?';
+    const body =
+      'Any offers waiting on it are withdrawn and the other people are told. This cannot be undone.';
+    if (Platform.OS === 'web') {
+      if (
+        globalThis.confirm?.(`${title}
+
+${body}`)
+      )
+        doDelete();
+      return;
+    }
+    Alert.alert(title, body, [
+      { text: 'Keep it', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: doDelete },
+    ]);
   };
 
   const goBack = () =>
@@ -196,6 +236,15 @@ export function ItemDetail({ kind, id }: { kind: MarketKind; id: string }) {
                 />
               ))}
             </Row>
+            <Button
+              label={isHave ? 'Delete this listing' : 'Delete this request'}
+              variant="quiet"
+              size="sm"
+              fullWidth
+              loading={deleteItem.isPending}
+              onPress={confirmDelete}
+              leftIcon={<Ionicons name="trash-outline" size={15} color={colors.danger} />}
+            />
           </Stack>
         ) : isHave ? (
           <Stack gap="sm">

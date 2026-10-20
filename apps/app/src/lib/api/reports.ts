@@ -31,7 +31,8 @@ export interface DisputeView {
 }
 
 export const reportsApi = {
-  create: (input: CreateReportInput) => api.post<{ report: ReportView }>('/api/v1/reports', input),
+  create: (input: CreateReportInput) =>
+    api.post<{ report: ReportView; duplicate: boolean }>('/api/v1/reports', input),
   mine: () => api.get<{ items: ReportView[] }>('/api/v1/reports/mine'),
 
   createDispute: (input: CreateDisputeInput) =>

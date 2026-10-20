@@ -43,6 +43,13 @@ export const qk = {
     mine: ['reports', 'mine'] as const,
     disputes: (transactionId: string) => ['reports', 'disputes', transactionId] as const,
   },
+  blocks: {
+    list: ['blocks', 'list'] as const,
+  },
+  favourites: {
+    ids: ['favourites', 'ids'] as const,
+    list: ['favourites', 'list'] as const,
+  },
   payments: {
     all: ['payments'] as const,
     detail: (id: string) => ['payments', 'detail', id] as const,

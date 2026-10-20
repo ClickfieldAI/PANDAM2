@@ -20,6 +20,7 @@ import { AddCategorySheet } from '@/components/AddCategorySheet';
 import { IntentSwitch } from '@/components/brand/IntentSwitch';
 import { CategoryGrid } from '@/components/CategoryFilter';
 import { ItemCard } from '@/components/ItemCard';
+import { NotificationBell } from '@/components/NotificationBell';
 import { MatchCard } from '@/components/MatchCard';
 import { ErrorState } from '@/components/states';
 import {
@@ -276,19 +277,22 @@ export default function HomeScreen() {
                 {name}
               </Text>
             </View>
-            <Press
-              scale="sm"
-              accessibilityRole="button"
-              accessibilityLabel="Your profile"
-              onPress={() => router.push('/(app)/(tabs)/profile')}
-              style={{ borderRadius: 24, marginTop: 2 }}
-            >
-              <Avatar
-                name={profile?.displayName ?? 'You'}
-                size={44}
-                uri={mediaSrc(profile?.avatarUrl)}
-              />
-            </Press>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <NotificationBell />
+              <Press
+                scale="sm"
+                accessibilityRole="button"
+                accessibilityLabel="Your profile"
+                onPress={() => router.push('/(app)/(tabs)/profile')}
+                style={{ borderRadius: 24, marginTop: 2 }}
+              >
+                <Avatar
+                  name={profile?.displayName ?? 'You'}
+                  size={44}
+                  uri={mediaSrc(profile?.avatarUrl)}
+                />
+              </Press>
+            </View>
           </View>
 
           {/* --------------------------------------------------- search -- */}

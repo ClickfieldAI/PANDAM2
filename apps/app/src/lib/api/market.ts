@@ -56,6 +56,12 @@ export const marketApi = {
   update: (kind: MarketKind, id: string, patch: UpdateInput) =>
     api.patch<{ item: MarketItem }>(`${base(kind)}/${id}`, patch),
 
+  /** Delete an item you own. `deleted` = gone for good; `archived` = hidden but kept for trade history. */
+  remove: (kind: MarketKind, id: string) =>
+    api.delete<{ deleted: boolean; outcome: 'deleted' | 'archived'; withdrawnOffers: number }>(
+      `${base(kind)}/${id}`,
+    ),
+
   setStatus: (kind: MarketKind, id: string, body: StatusInput) =>
     api.post<{ item: MarketItem }>(`${base(kind)}/${id}/status`, body),
 };

@@ -19,7 +19,6 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { type MessageView } from '@pandam/types';
 import {
   Avatar,
   EmptyState,
@@ -43,6 +42,10 @@ import { ErrorState } from '@/components/states';
 import { TradeContextCard, tradeSubtitle } from '@/components/TradeContextCard';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { useOffer } from '@/lib/hooks/useOffers';
+import { ApiError } from '@/lib/api/client';
+import { useSession } from '@/lib/auth/hooks';
+import { useChatOutbox } from '@/lib/chat/OutboxProvider';
+import { type ThreadItem, mergeThread, newClientId } from '@/lib/chat/outbox-core';
 import { mediaSrc, uploadMessageImage } from '@/lib/api/media';
 import { dayLabel, timeOfDay } from '@/lib/format';
 import {
@@ -55,7 +58,9 @@ import {
 
 /** A message, plus what its neighbours mean for how it should be drawn. */
 interface Rendered {
-  message: MessageView;
+  /** The message plus its honest delivery state (sending / waiting / failed / sent / seen). */
+  thread: ThreadItem;
+  message: ThreadItem['message'];
   /** First of a run from the same person — gets the rounded outer corner. */
   startsRun: boolean;
   /** Last of a run — gets the tail and the timestamp. */
@@ -67,7 +72,8 @@ interface Rendered {
 /** Two messages belong to the same run if same sender and within five minutes. */
 const RUN_WINDOW_MS = 5 * 60_000;
 
-function group(messages: MessageView[]): Rendered[] {
+function group(thread: ThreadItem[]): Rendered[] {
+  const messages = thread.map((t) => t.message);
   return messages.map((message, i) => {
     const prev = messages[i - 1];
     const next = messages[i + 1];
@@ -84,6 +90,7 @@ function group(messages: MessageView[]): Rendered[] {
     const dayChanged = !prev || dayLabel(prev.createdAt) !== dayLabel(message.createdAt);
 
     return {
+      thread: thread[i]!,
       message,
       startsRun: !sameAsPrev || dayChanged,
       endsRun: !sameAsNext,
@@ -106,7 +113,18 @@ function group(messages: MessageView[]): Rendered[] {
  * copy, flat PANDAM orange on outgoing — the same structural language as
  * every card elsewhere in the product, not a borrowed messaging-app style.
  */
-function Bubble({ item }: { item: Rendered }) {
+function Bubble({
+  item,
+  isLastMine,
+  onRetry,
+  onDiscard,
+}: {
+  item: Rendered;
+  /** The newest message the caller sent — the only one that shows "Sent" / "Seen". */
+  isLastMine: boolean;
+  onRetry: (clientId: string) => void;
+  onDiscard: (clientId: string) => void;
+}) {
   const M = useM();
 
   const colors = useThemeColors();
@@ -168,13 +186,50 @@ function Bubble({ item }: { item: Rendered }) {
           ) : null}
         </View>
 
-        {endsRun ? (
+        {/* Delivery state — only what is actually known. "Seen" appears only when the
+            recipient's read marker proves it; there is no "delivered" state. */}
+        {item.thread.state === 'failed' && item.thread.clientId ? (
+          <View style={{ alignItems: 'flex-end', marginTop: 3, marginHorizontal: spacing.xs }}>
+            <Text variant="caption" tone="danger" style={{ fontSize: 11.5 }}>
+              Not sent{item.thread.error ? ' · ' + item.thread.error : ''}
+            </Text>
+            <Row gap="md" style={{ marginTop: 2 }}>
+              <Text
+                variant="caption"
+                tone="accent"
+                accessibilityRole="button"
+                style={{ fontWeight: '700', fontSize: 12 }}
+                onPress={() => onRetry(item.thread.clientId!)}
+              >
+                Retry
+              </Text>
+              <Text
+                variant="caption"
+                tone="muted"
+                accessibilityRole="button"
+                style={{ fontSize: 12 }}
+                onPress={() => onDiscard(item.thread.clientId!)}
+              >
+                Delete
+              </Text>
+            </Row>
+          </View>
+        ) : item.thread.state === 'sending' || item.thread.state === 'waiting' ? (
+          <Text
+            variant="caption"
+            tone="faint"
+            style={{ marginTop: 3, marginHorizontal: spacing.xs, fontSize: 10.5 }}
+          >
+            {item.thread.state === 'waiting' ? 'No connection — will keep trying' : 'Sending…'}
+          </Text>
+        ) : endsRun ? (
           <Text
             variant="caption"
             tone="faint"
             style={{ marginTop: 3, marginHorizontal: spacing.xs, fontSize: 10.5 }}
           >
             {timeOfDay(message.createdAt)}
+            {mine && isLastMine ? (item.thread.state === 'seen' ? ' · Seen' : ' · Sent') : ''}
           </Text>
         ) : null}
       </View>
@@ -283,6 +338,8 @@ export default function ChatScreen() {
     ? demoQuery(liveMessages, demoMessages[demoConv.id] ?? [])
     : liveMessages;
   const send = useSendMessage(conversationId!);
+  const { user: me } = useSession();
+  const outbox = useChatOutbox();
   const markRead = useMarkConversationRead(conversationId!);
   const typing = useTypingIndicator(conversationId);
   const [draft, setDraft] = useState('');
@@ -301,8 +358,19 @@ export default function ChatScreen() {
   // The trade this chat belongs to (every trade chat is tied to one offer).
   const offer = useOffer(conversation.data?.offerId ?? undefined);
   const name = person?.displayName ?? 'Chat';
-  const rendered = useMemo(() => group(messages.data ?? []), [messages.data]);
+  const rendered = useMemo(
+    () => group(mergeThread(conversationId!, messages.data ?? [], outbox.entries, me?.id ?? '')),
+    [conversationId, messages.data, outbox.entries, me?.id],
+  );
+  const lastMineKey = [...rendered].reverse().find((r) => r.message.isMine)?.thread.key;
+
+  // Once the server returns a message we queued, the queue entry is finished.
+  const { reconcile } = outbox;
+  useEffect(() => {
+    if (messages.data) reconcile(messages.data);
+  }, [messages.data, reconcile]);
   const canSend = (!!draft.trim() || !!pendingImage) && !send.isPending && !uploadingImage;
+  const [sendError, setSendError] = useState<string | null>(null);
 
   const pickImage = async () => {
     const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
@@ -320,27 +388,50 @@ export default function ChatScreen() {
     setDraft('');
     setPendingImage(null);
     setAttachError(null);
+    setSendError(null);
     typing.stopTyping();
 
-    let imageKey: string | undefined;
-    if (localImage) {
-      setUploadingImage(true);
-      try {
-        imageKey = (await uploadMessageImage(conversationId!, localImage)).imageKey;
-      } catch (err) {
-        console.warn('[chat] photo upload failed:', err);
-        setUploadingImage(false);
-        setDraft(body);
-        setPendingImage(localImage);
-        setAttachError('Could not upload that photo. Try again.');
-        return;
-      }
-      setUploadingImage(false);
+    // A text message goes through the persistent outbox: it is saved on the
+    // device first, shown as "sending", retried if the connection drops, and
+    // de-duplicated by the server — so it can neither be lost nor doubled.
+    if (!localImage) {
+      outbox.enqueue(conversationId!, body);
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
+      return;
     }
 
+    // A photo message needs its upload to finish first, so it is sent directly
+    // (not queued): if anything fails the draft and photo come BACK so nothing
+    // the user composed is silently lost.
+    const restore = (message: string) => {
+      setDraft(body);
+      setPendingImage(localImage);
+      setSendError(message);
+    };
+    setUploadingImage(true);
+    let imageKey: string;
+    try {
+      imageKey = (await uploadMessageImage(conversationId!, localImage)).imageKey;
+    } catch (err) {
+      console.warn('[chat] photo upload failed:', err);
+      setUploadingImage(false);
+      setAttachError('Could not upload that photo. Try again.');
+      restore('Your message was not sent.');
+      return;
+    }
+    setUploadingImage(false);
+
     send.mutate(
-      { body: body || undefined, imageKey },
-      { onSuccess: () => setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50) },
+      { body: body || undefined, imageKey, clientId: newClientId() },
+      {
+        onSuccess: () => setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50),
+        onError: (e) =>
+          restore(
+            e instanceof ApiError
+              ? e.message
+              : 'Could not send. Check your connection and try again.',
+          ),
+      },
     );
   };
 
@@ -468,7 +559,7 @@ export default function ChatScreen() {
             <FlatList
               ref={listRef}
               data={rendered}
-              keyExtractor={(r) => r.message.id}
+              keyExtractor={(r) => r.thread.key}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{
                 width: '100%',
@@ -482,7 +573,12 @@ export default function ChatScreen() {
               renderItem={({ item }) => (
                 <>
                   {item.daySeparator ? <DaySeparator label={item.daySeparator} /> : null}
-                  <Bubble item={item} />
+                  <Bubble
+                    item={item}
+                    isLastMine={item.thread.key === lastMineKey}
+                    onRetry={outbox.retry}
+                    onDiscard={outbox.discard}
+                  />
                 </>
               )}
               ListEmptyComponent={
@@ -553,6 +649,17 @@ export default function ChatScreen() {
                 {uploadingImage ? 'Uploading…' : 'Photo attached'}
               </Text>
             </Row>
+          ) : null}
+
+          {sendError ? (
+            <Text
+              variant="caption"
+              tone="danger"
+              accessibilityLiveRegion="polite"
+              style={{ paddingHorizontal: layout.gutter, paddingTop: spacing.sm }}
+            >
+              {sendError} Your message is back in the box.
+            </Text>
           ) : null}
 
           {attachError ? (

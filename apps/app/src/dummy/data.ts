@@ -18,7 +18,6 @@ import {
   type ItemType,
   type MarketItem,
   type MessageView,
-  type NotificationView,
   type OfferView,
   type OwnerRef,
   type ReciprocalMatchView,
@@ -576,6 +575,8 @@ export const demoOffers: OfferView[] = [
     requested: ref('demo-l-canon'),
     message: 'Straight swap? I can meet in Chennai next weekend — I am there for a wedding.',
     matchId: 'demo-m-arjun',
+    parentOfferId: null,
+    counterOfferId: null,
     requestedKind: 'listing',
     imageUrl: null,
     conversationId: null,
@@ -594,6 +595,8 @@ export const demoOffers: OfferView[] = [
     requested: ref('demo-l-guitar'),
     message: 'Controller + a portrait session for the guitar?',
     matchId: null,
+    parentOfferId: null,
+    counterOfferId: null,
     requestedKind: 'listing',
     imageUrl: null,
     conversationId: null,
@@ -612,6 +615,8 @@ export const demoOffers: OfferView[] = [
     requested: ref('demo-l-portraits'),
     message: null,
     matchId: null,
+    parentOfferId: null,
+    counterOfferId: null,
     requestedKind: 'listing',
     imageUrl: null,
     conversationId: null,
@@ -694,6 +699,7 @@ export const demoConversations: ConversationView[] = [
     participants: [demoUsers.arjun],
     lastMessage: demoMessages['demo-c-arjun']!.at(-1)!,
     unread: true,
+    unreadCount: 1,
     createdAt: NOW - 3 * H,
     updatedAt: NOW - 20 * 60 * 1000,
   },
@@ -704,33 +710,10 @@ export const demoConversations: ConversationView[] = [
     participants: [demoUsers.priya],
     lastMessage: demoMessages['demo-c-priya']!.at(-1)!,
     unread: false,
+    unreadCount: 0,
     createdAt: NOW - 4 * D,
     updatedAt: NOW - 3 * D,
   },
 ];
 
 /* ---------------------------------------------------------- notifications -- */
-
-export const demoNotifications: NotificationView[] = [
-  {
-    id: 'demo-nt-1',
-    type: 'offer_received',
-    data: { offerId: 'demo-o-1' },
-    read: false,
-    createdAt: NOW - 2 * H,
-  },
-  {
-    id: 'demo-nt-2',
-    type: 'message_received',
-    data: { conversationId: 'demo-c-arjun' },
-    read: false,
-    createdAt: NOW - 20 * 60 * 1000,
-  },
-  {
-    id: 'demo-nt-3',
-    type: 'offer_accepted',
-    data: { offerId: 'demo-o-3' },
-    read: true,
-    createdAt: NOW - 3 * D,
-  },
-];

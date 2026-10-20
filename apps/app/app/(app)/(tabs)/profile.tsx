@@ -281,6 +281,12 @@ export default function ProfileScreen() {
             <TourTarget id="profile-trading" scrollRef={scrollRef}>
               <Panel>
                 <MenuRow
+                  icon="heart-outline"
+                  title="Saved"
+                  subtitle="Listings you have hearted"
+                  onPress={() => router.push('/(app)/saved')}
+                />
+                <MenuRow
                   icon="sparkles-outline"
                   title="Matches"
                   subtitle="Reciprocal barters found for you"
@@ -350,6 +356,22 @@ export default function ProfileScreen() {
                   onPress={tour.start}
                 />
               </TourTarget>
+              {user && (user.role === 'moderator' || user.role === 'admin') && (
+                <MenuRow
+                  icon="shield-checkmark-outline"
+                  tone="neutral"
+                  title="Moderation"
+                  subtitle="Reports, users and trades (staff only)"
+                  onPress={() => router.push('/(app)/admin')}
+                />
+              )}
+              <MenuRow
+                icon="ban-outline"
+                tone="neutral"
+                title="Blocked people"
+                subtitle="See and unblock people you have blocked"
+                onPress={() => router.push('/(app)/blocked')}
+              />
               <MenuRow
                 icon="log-out-outline"
                 title={logout.isPending ? 'Signing out…' : 'Sign out'}

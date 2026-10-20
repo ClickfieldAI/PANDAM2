@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
 import { Pressable } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -13,14 +12,20 @@ import { haptic, useMotionOK, useThemeColors } from '@pandam/ui';
 /**
  * A save heart that pops with a spring when tapped.
  *
- * VISUAL ONLY: there is no favourites API, so the state lives in the card for
- * the session and is never sent anywhere. It exists to give browsing the
- * tactile "keep this" gesture people expect from a marketplace.
+ * Purely presentational: whether it is filled, and what a tap does, come from
+ * the caller (see `ListingHeart`, which is wired to the favourites API).
  */
-export function SaveHeart({ size = 34 }: { size?: number }) {
+export function SaveHeart({
+  size = 34,
+  saved,
+  onToggle,
+}: {
+  size?: number;
+  saved: boolean;
+  onToggle: () => void;
+}) {
   const colors = useThemeColors();
 
-  const [saved, setSaved] = useState(false);
   const motionOK = useMotionOK();
   const pop = useSharedValue(1);
   const style = useAnimatedStyle(() => ({ transform: [{ scale: pop.get() }] }));
@@ -33,7 +38,7 @@ export function SaveHeart({ size = 34 }: { size?: number }) {
       hitSlop={8}
       onPress={() => {
         haptic.selection();
-        setSaved((s) => !s);
+        onToggle();
         if (motionOK) {
           pop.set(
             withSequence(

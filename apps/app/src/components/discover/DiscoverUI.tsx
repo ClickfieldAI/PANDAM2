@@ -12,7 +12,7 @@ import { ScrollView, TextInput, View, Text, useWindowDimensions } from 'react-na
 import { type Category, type MarketItem } from '@pandam/types';
 import { Avatar, CoverTile, Press, haptic } from '@pandam/ui';
 
-import { SaveHeart } from '@/components/brand/SaveHeart';
+import { ListingHeart } from '@/components/brand/ListingHeart';
 import { useM, RedBlob } from '@/components/matches/MatchesUI';
 import { mediaSrc, primaryImage } from '@/lib/api/media';
 import { formatMoney, timeAgo } from '@/lib/format';
@@ -503,7 +503,7 @@ export function FeatureCard({
         </View>
       </Press>
       <View style={{ position: 'absolute', top: 12, right: 12 }}>
-        <SaveHeart size={36} />
+        <ListingHeart item={item} size={36} />
       </View>
     </View>
   );
@@ -618,7 +618,7 @@ export function GridCard({
         </View>
       </Press>
       <View style={{ position: 'absolute', top: 8, right: 8 }}>
-        <SaveHeart size={32} />
+        <ListingHeart item={item} size={32} />
       </View>
     </View>
   );

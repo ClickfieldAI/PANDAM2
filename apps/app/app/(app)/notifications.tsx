@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Switch, View } from 'react-native';
 
 import { type NotificationType, type NotificationView } from '@pandam/types';
 import {
@@ -19,16 +19,22 @@ import {
   useThemeColors,
 } from '@pandam/ui';
 
-import { demoMergeList, demoNotifications } from '@/dummy';
 import { AppHeader } from '@/components/AppHeader';
 import { ErrorState } from '@/components/states';
 import { timeAgo } from '@/lib/format';
 import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
-  useNotifications,
+  useNotificationFeed,
+  useNotificationPreferences,
+  useSetNotificationPreferences,
 } from '@/lib/hooks/useNotifications';
-import { hasPushPermission, pushSupported, requestPushPermission } from '@/lib/push/token';
+import {
+  hasPushPermission,
+  pushBlockedByExpoGo,
+  pushSupported,
+  requestPushPermission,
+} from '@/lib/push/token';
 
 type Tone = 'accent' | 'need' | 'match' | 'neutral';
 
@@ -48,10 +54,27 @@ const COPY: Record<
   offer_rejected: { icon: 'close-circle-outline', label: 'Offer declined', tone: 'neutral' },
   offer_cancelled: { icon: 'close-circle-outline', label: 'Offer withdrawn', tone: 'neutral' },
   offer_expired: { icon: 'time-outline', label: 'Offer expired', tone: 'neutral' },
+  offer_countered: { icon: 'swap-horizontal-outline', label: 'Counter offer', tone: 'accent' },
   message_received: { icon: 'chatbubble-outline', label: 'New message', tone: 'accent' },
   transaction_updated: { icon: 'repeat-outline', label: 'Trade updated', tone: 'need' },
   review_reminder: { icon: 'star-outline', label: 'Leave a review', tone: 'need' },
   review_received: { icon: 'star-outline', label: 'New review', tone: 'match' },
+  moderation_notice: {
+    icon: 'shield-outline',
+    label: 'A moderator removed one of your posts',
+    tone: 'neutral',
+  },
+  report_update: {
+    icon: 'flag-outline',
+    label: 'A report you filed was reviewed',
+    tone: 'neutral',
+  },
+  listing_match: {
+    icon: 'sparkles-outline',
+    label: 'New listing for something you need',
+    tone: 'match',
+  },
+  listing_saved: { icon: 'heart-outline', label: 'Someone saved your listing', tone: 'accent' },
   need_match: {
     icon: 'search-outline',
     label: 'Someone needs something you have',
@@ -66,6 +89,7 @@ function target(n: NotificationView): string | null {
   if (n.data.transactionId) return `/(app)/transaction/${n.data.transactionId}`;
   if (n.data.paymentId) return `/(app)/payment/${n.data.paymentId}`;
   if (n.data.needId) return `/(app)/need/${n.data.needId}`;
+  if (n.data.listingId) return `/(app)/listing/${n.data.listingId}`;
   return null;
 }
 
@@ -99,6 +123,15 @@ function PushOptIn() {
     };
   }, [state]);
 
+  // Expo Go on Android cannot do push at all — say so instead of offering a button that cannot work.
+  if (pushBlockedByExpoGo()) {
+    return (
+      <Notice kind="neutral" title="Phone pop-ups need a full app build">
+        Android's Expo Go can't receive push notifications. Offers and messages still appear in this
+        list; pop-ups on Android need a development build of PANDAM.
+      </Notice>
+    );
+  }
   if (state === 'on' || state === 'checking' || state === 'unsupported') return null;
 
   const denied = state === 'denied';
@@ -134,15 +167,63 @@ function PushOptIn() {
   );
 }
 
+/** Two switches. Push only affects pop-ups on your phone; the list here is always kept. */
+function AlertSettings() {
+  const prefs = useNotificationPreferences();
+  const save = useSetNotificationPreferences();
+  if (!prefs.data) return null;
+  const rows = [
+    {
+      key: 'pushEnabled' as const,
+      title: 'Push notifications',
+      hint: 'Pop-ups on your phone. Turning this off never removes anything from this list.',
+    },
+    {
+      key: 'listingAlerts' as const,
+      title: 'Listings that match my requests',
+      hint: 'Tell me when someone lists something in a category I asked for.',
+    },
+  ];
+  return (
+    <View style={{ gap: spacing.sm }}>
+      {rows.map((r) => (
+        <View
+          key={r.key}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: spacing.md,
+          }}
+        >
+          <View style={{ flexShrink: 1 }}>
+            <Text variant="bodyStrong">{r.title}</Text>
+            <Text variant="caption" tone="muted">
+              {r.hint}
+            </Text>
+          </View>
+          <Switch
+            value={prefs.data[r.key]}
+            disabled={save.isPending}
+            accessibilityLabel={r.title}
+            onValueChange={(v) => save.mutate({ [r.key]: v })}
+          />
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export default function NotificationsScreen() {
   const colors = useThemeColors();
 
   const router = useRouter();
-  const notifications = demoMergeList(useNotifications(), demoNotifications);
+  const notifications = useNotificationFeed();
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
-  const items = notifications.data ?? [];
-  const unread = items.filter((n) => !n.read).length;
+  const items = notifications.data?.pages.flatMap((p) => p.items) ?? [];
+  // The server's count, not a count of whatever pages happen to be loaded.
+  const unread = notifications.data?.pages[0]?.unreadCount ?? 0;
 
   return (
     <Screen padded={false}>
@@ -177,6 +258,14 @@ export default function NotificationsScreen() {
         data={items}
         keyExtractor={(n) => n.id}
         showsVerticalScrollIndicator={false}
+        refreshing={notifications.isRefetching && !notifications.isFetchingNextPage}
+        onRefresh={() => void notifications.refetch()}
+        onEndReachedThreshold={0.4}
+        onEndReached={() => {
+          if (notifications.hasNextPage && !notifications.isFetchingNextPage) {
+            void notifications.fetchNextPage();
+          }
+        }}
         separatorInset={spacing.lg + 38 + spacing.md}
         contentContainerStyle={{
           width: '100%',
@@ -189,8 +278,9 @@ export default function NotificationsScreen() {
         }}
         ListHeaderComponent={
           items.length > 0 ? (
-            <View style={{ marginBottom: spacing.lg }}>
+            <View style={{ marginBottom: spacing.lg, gap: spacing.md }}>
               <PushOptIn />
+              <AlertSettings />
             </View>
           ) : null
         }
@@ -217,7 +307,8 @@ export default function NotificationsScreen() {
                   />
                 </IconFrame>
               }
-              title={copy.label}
+              title={item.title ?? copy.label}
+              subtitle={item.body ?? undefined}
               meta={timeAgo(item.createdAt)}
               emphasis={!item.read}
               chevron={
@@ -252,7 +343,9 @@ export default function NotificationsScreen() {
           )
         }
         ListFooterComponent={
-          items.length > 0 ? (
+          notifications.isFetchingNextPage ? (
+            <SkeletonList count={1} />
+          ) : items.length > 0 ? (
             <Text
               variant="caption"
               tone="faint"

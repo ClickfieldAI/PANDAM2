@@ -5,7 +5,10 @@ import { useThemeColors } from '@pandam/ui';
 import { Splash, useHoldSplash } from '@/components/Splash';
 import { useSession } from '@/lib/auth/hooks';
 import { useNotificationRouting } from '@/lib/hooks/useNotificationRouting';
+import { useRefreshNotificationsOnActive } from '@/lib/hooks/useNotifications';
 import { usePushRegistration } from '@/lib/hooks/usePushRegistration';
+import { CelebrationProvider } from '@/components/celebrate/CelebrationProvider';
+import { ChatOutboxProvider } from '@/lib/chat/OutboxProvider';
 import { TourProvider } from '@/lib/tour/TourProvider';
 
 /** Authenticated area. Guards every screen inside `(app)`. */
@@ -17,6 +20,7 @@ export default function AppLayout() {
   // guard and keep their hook order stable across the redirect.
   usePushRegistration();
   useNotificationRouting();
+  useRefreshNotificationsOnActive();
 
   const showSplash = useHoldSplash(isResolving);
   if (showSplash) return <Splash />;
@@ -30,18 +34,22 @@ export default function AppLayout() {
 
   return (
     <TourProvider key={user.id} userId={user.id}>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.background },
-          animation: 'slide_from_right',
-        }}
-      >
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="new-listing" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="new-need" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="report" options={{ presentation: 'modal' }} />
-      </Stack>
+      <ChatOutboxProvider key={user.id} userId={user.id}>
+        <CelebrationProvider>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.background },
+              animation: 'slide_from_right',
+            }}
+          >
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="new-listing" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="new-need" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="report" options={{ presentation: 'modal' }} />
+          </Stack>
+        </CelebrationProvider>
+      </ChatOutboxProvider>
     </TourProvider>
   );
 }

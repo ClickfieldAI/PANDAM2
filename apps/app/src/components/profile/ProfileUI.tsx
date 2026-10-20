@@ -12,7 +12,7 @@ import { CoverTile, Press } from '@pandam/ui';
 
 import { TourTarget } from '@/lib/tour/TourTarget';
 
-import { SaveHeart } from '@/components/brand/SaveHeart';
+import { ListingHeart } from '@/components/brand/ListingHeart';
 import { useM, RedBlob } from '@/components/matches/MatchesUI';
 import { primaryImage } from '@/lib/api/media';
 import { formatMoney, timeAgo } from '@/lib/format';
@@ -494,7 +494,7 @@ export function ProfileItemCard({
         </View>
       </Press>
       <View style={{ position: 'absolute', top: 7, right: 7 }}>
-        <SaveHeart size={32} />
+        <ListingHeart item={item} size={32} />
       </View>
     </View>
   );

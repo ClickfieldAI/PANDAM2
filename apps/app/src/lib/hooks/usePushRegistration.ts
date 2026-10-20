@@ -1,16 +1,21 @@
 /**
  * Keeps this device's push token registered to whoever is signed in.
  *
- * It never prompts: registration only happens when permission was ALREADY
- * granted (see `lib/push/token`), so the permission dialog is shown by a
- * screen where the user chose it rather than on first launch. A device that
+ * Permission is requested once, right after sign-in, only while it has
+ * never been answered; after that it only re-registers when already granted. A device that
  * cannot receive push — simulator, web, permission denied — ends here
  * silently, because the in-app notification feed is the real channel.
  */
 import { useEffect, useRef } from 'react';
 
 import { useSession } from '@/lib/auth/hooks';
-import { registerPushToken, resolvePushToken } from '@/lib/push/token';
+import {
+  configureNotificationDisplay,
+  pushPermissionUndetermined,
+  registerPushToken,
+  requestPushPermission,
+  resolvePushToken,
+} from '@/lib/push/token';
 
 export function usePushRegistration(): void {
   const { user } = useSession();
@@ -27,6 +32,14 @@ export function usePushRegistration(): void {
 
     let cancelled = false;
     void (async () => {
+      await configureNotificationDisplay();
+      // Like WhatsApp: ask once, right after sign-in, if the question has never been
+      // answered. (iOS only ever asks once, so it is asked while the user is looking at the app.)
+      if (await pushPermissionUndetermined()) {
+        const ok = await requestPushPermission(); // registers the token itself on success
+        if (ok) registeredFor.current = user.id;
+        return;
+      }
       const token = await resolvePushToken();
       if (!token || cancelled) return;
       // Left unset on failure, so the next mount tries again.

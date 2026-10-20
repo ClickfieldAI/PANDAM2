@@ -102,6 +102,20 @@ export function useUpdateItem(kind: MarketKind) {
   });
 }
 
+export function useDeleteItem(kind: MarketKind) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => marketApi.remove(kind, id),
+    onSuccess: (_res, id) => {
+      client.removeQueries({ queryKey: qk.market.detail(kind, id) });
+      void client.invalidateQueries({ queryKey: qk.market.all(kind) });
+      void client.invalidateQueries({ queryKey: qk.offers.all });
+      void client.invalidateQueries({ queryKey: ['favourites'] });
+      void client.invalidateQueries({ queryKey: qk.matches });
+    },
+  });
+}
+
 export function useSetItemStatus(kind: MarketKind) {
   const client = useQueryClient();
   return useMutation({

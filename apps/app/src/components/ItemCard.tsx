@@ -20,7 +20,7 @@ import {
   useThemeColors,
 } from '@pandam/ui';
 
-import { SaveHeart } from '@/components/brand/SaveHeart';
+import { ListingHeart } from '@/components/brand/ListingHeart';
 import { mediaSrc, primaryImage } from '@/lib/api/media';
 import { STATUS_LABEL, TYPE_LABEL, formatMoney, statusBadgeKind, timeAgo } from '@/lib/format';
 import { categoryIcon } from '@/lib/icons';
@@ -297,7 +297,7 @@ export function ItemCard({
           </Row>
         </Press>
         <View style={{ position: 'absolute', top: spacing.md, right: spacing.md }}>
-          <SaveHeart />
+          <ListingHeart item={item} />
         </View>
       </View>
     );
@@ -414,7 +414,7 @@ export function ItemCard({
           </View>
         </Press>
         <View style={{ position: 'absolute', top: spacing.sm, right: spacing.sm }}>
-          <SaveHeart size={30} />
+          <ListingHeart item={item} size={30} />
         </View>
       </View>
     );

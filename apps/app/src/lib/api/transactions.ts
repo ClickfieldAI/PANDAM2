@@ -2,7 +2,7 @@ import { type BarterTransactionView } from '@pandam/types';
 
 import { api } from './client';
 
-export type TransactionAction = 'start' | 'complete' | 'cancel';
+export type TransactionAction = 'start' | 'complete' | 'confirm' | 'cancel';
 
 export const transactionsApi = {
   list: () => api.get<{ items: BarterTransactionView[] }>('/api/v1/transactions'),

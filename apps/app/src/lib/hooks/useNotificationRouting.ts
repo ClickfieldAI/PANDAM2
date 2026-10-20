@@ -48,12 +48,14 @@ function routeFor(data: PushData): string {
   const conversationId = str('conversationId');
   const paymentId = str('paymentId');
   const needId = str('needId');
+  const listingId = str('listingId');
 
   if (conversationId) return `/(app)/chat/${conversationId}`;
   if (offerId) return `/(app)/offer/${offerId}`;
   if (transactionId) return `/(app)/transaction/${transactionId}`;
   if (paymentId) return `/(app)/payment/${paymentId}`;
   if (needId) return `/(app)/need/${needId}`;
+  if (listingId) return `/(app)/listing/${listingId}`;
   return '/(app)/notifications';
 }
 

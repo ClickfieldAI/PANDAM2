@@ -8,8 +8,11 @@ export const conversationsApi = {
   markRead: (id: string) => api.post<{ read: true }>(`/api/v1/conversations/${id}/read`),
   messages: (id: string) =>
     api.get<{ items: MessageView[] }>(`/api/v1/conversations/${id}/messages`),
-  sendMessage: (id: string, input: { body?: string; imageKey?: string }) =>
-    api.post<{ message: MessageView }>(`/api/v1/conversations/${id}/messages`, input),
+  sendMessage: (id: string, input: { body?: string; imageKey?: string; clientId?: string }) =>
+    api.post<{ message: MessageView; replayed: boolean }>(
+      `/api/v1/conversations/${id}/messages`,
+      input,
+    ),
   typing: (id: string) => api.get<TypingStatusView>(`/api/v1/conversations/${id}/typing`),
   setTyping: (id: string, typing: boolean) =>
     api.post<{ typing: boolean }>(`/api/v1/conversations/${id}/typing`, { typing }),

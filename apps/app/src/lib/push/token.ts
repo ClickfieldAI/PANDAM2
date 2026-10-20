@@ -34,6 +34,14 @@ function isExpoGo(): boolean {
 }
 
 /**
+ * Expo Go on ANDROID cannot receive remote push at all (removed in SDK 53): it
+ * needs a development build with Firebase (FCM) credentials. Expo Go on iOS can.
+ */
+export function pushBlockedByExpoGo(): boolean {
+  return isExpoGo() && Platform.OS === 'android';
+}
+
+/**
  * Lazily `require`s `expo-notifications`, exactly like `googleNativeSignIn.ts`
  * does for the native Google SDK: a static top-level `import` runs this
  * module's own init code the instant ANYTHING imports this file, which — since
@@ -44,7 +52,7 @@ function isExpoGo(): boolean {
  */
 function requireNotifications(): NotificationsModule | null {
   if (loaded === undefined) {
-    if (isExpoGo()) {
+    if (pushBlockedByExpoGo()) {
       loaded = null;
     } else {
       try {
@@ -84,7 +92,10 @@ export async function resolvePushToken(): Promise<string | null> {
 
     const token = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
     return token.data;
-  } catch {
+  } catch (error) {
+    // Not an error the user can fix in the UI, but the developer needs to see why
+    // (for example missing Firebase/FCM credentials on Android).
+    console.warn('[push] could not get a push token:', error);
     return null;
   }
 }
@@ -117,6 +128,48 @@ export async function requestPushPermission(): Promise<boolean> {
   }
   const token = await resolvePushToken();
   return token ? registerPushToken(token) : false;
+}
+
+/**
+ * Show banners and play sound even while the app is open, and give Android a
+ * high-importance channel (without one, Android shows nothing heads-up).
+ * Safe to call repeatedly; does nothing where push is unavailable.
+ */
+export async function configureNotificationDisplay(): Promise<void> {
+  if (Platform.OS === 'web') return;
+  const Notifications = requireNotifications();
+  if (!Notifications) return;
+  try {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
+    });
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'Trades and messages',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+      });
+    }
+  } catch (error) {
+    console.warn('[push] could not configure notification display:', error);
+  }
+}
+
+/** True when permission has never been asked (so asking is allowed and useful). */
+export async function pushPermissionUndetermined(): Promise<boolean> {
+  if (!Device.isDevice || Platform.OS === 'web') return false;
+  const Notifications = requireNotifications();
+  if (!Notifications) return false;
+  try {
+    return (await Notifications.getPermissionsAsync()).status === 'undetermined';
+  } catch {
+    return false;
+  }
 }
 
 /** Whether this device currently has permission to show notifications. */

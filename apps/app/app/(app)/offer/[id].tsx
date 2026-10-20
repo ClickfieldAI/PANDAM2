@@ -32,7 +32,8 @@ import { IS_DEMO_DATA, demoOffers, demoQuery } from '@/dummy';
 import { ApiError } from '@/lib/api/client';
 import { mediaSrc } from '@/lib/api/media';
 import { TYPE_LABEL, timeAgo } from '@/lib/format';
-import { useOffer, useRespondToOffer } from '@/lib/hooks/useOffers';
+import { useCelebrate } from '@/components/celebrate/CelebrationProvider';
+import { useOffer, useOfferHistory, useRespondToOffer } from '@/lib/hooks/useOffers';
 import { useTransactions } from '@/lib/hooks/useTransactions';
 
 /** What the header says under the title, for the offer's REAL state. */
@@ -46,6 +47,8 @@ function subtitleFor(o: OfferView): string {
       return 'This offer was declined';
     case 'cancelled':
       return 'This offer was withdrawn';
+    case 'countered':
+      return o.isMine ? 'They answered with a counter-offer' : 'You answered with a counter-offer';
     default:
       return 'This offer expired';
   }
@@ -64,7 +67,9 @@ export default function OfferDetailScreen() {
   const demoOffer = IS_DEMO_DATA ? demoOffers.find((o) => o.id === id) : undefined;
   const offer = demoOffer ? demoQuery(liveOffer, demoOffer) : liveOffer;
   const respond = useRespondToOffer();
+  const celebrate = useCelebrate();
   const transactions = useTransactions();
+  const history = useOfferHistory(demoOffer ? undefined : id);
 
   const respondError =
     respond.error instanceof ApiError
@@ -116,7 +121,12 @@ export default function OfferDetailScreen() {
   const doAccept = () =>
     respond.mutate(
       { id: o.id, action: 'accept' },
-      { onSuccess: () => toast.success('Trade accepted. Keep chatting to arrange the swap.') },
+      {
+        onSuccess: () => {
+          celebrate('Trade accepted');
+          toast.success('Trade accepted. Keep chatting to arrange the swap.');
+        },
+      },
     );
   // React Native's Alert is a no-op on web, so the browser's own confirm is used there.
   const confirmAccept = () => {
@@ -134,6 +144,14 @@ export default function OfferDetailScreen() {
   };
 
   const openChat = () => router.push(`/(app)/chat/${o.conversationId}`);
+  // Only an item-for-item offer can be countered (the server enforces this too).
+  const canCounter = canRespond && iAmRecipient && o.requestedKind === 'listing';
+  const openCounter = () =>
+    router.push({
+      pathname: '/(app)/offer/new',
+      params: { counterOf: o.id, requestedListingId: o.offered.id },
+    });
+  const chain = history.data ?? [];
 
   return (
     <View style={{ flex: 1, backgroundColor: M.bg }}>
@@ -255,6 +273,61 @@ export default function OfferDetailScreen() {
               </View>
             ) : null}
 
+            {o.parentOfferId ? (
+              <Text
+                style={{
+                  fontFamily: 'InterTight_600SemiBold',
+                  fontSize: 13.5,
+                  color: colors.textMuted,
+                  marginTop: 16,
+                }}
+              >
+                This is a counter-offer to an earlier offer.
+              </Text>
+            ) : null}
+
+            {/* ------------------------------------------------ negotiation -- */}
+            {chain.length > 1 ? (
+              <View style={{ marginTop: 22, gap: 10 }}>
+                <Text style={{ fontFamily: 'InterTight_800ExtraBold', fontSize: 18, color: M.ink }}>
+                  Negotiation
+                </Text>
+                {chain.map((step, index) => (
+                  <Press
+                    key={step.id}
+                    scale="sm"
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open step ${index + 1}`}
+                    onPress={() => step.id !== o.id && router.push(`/(app)/offer/${step.id}`)}
+                    style={{
+                      padding: 12,
+                      borderRadius: 12,
+                      borderWidth: step.id === o.id ? 2 : 1,
+                      borderColor: step.id === o.id ? colors.accent : colors.borderSoft,
+                      backgroundColor: colors.surface,
+                      gap: 4,
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text
+                        style={{ fontFamily: 'InterTight_700Bold', fontSize: 14, color: M.ink }}
+                      >
+                        {index === 0 ? 'Offer' : 'Counter'} ·{' '}
+                        {step.isMine ? 'you' : step.fromUser.displayName}
+                      </Text>
+                      <StatusPill status={step.status} />
+                    </View>
+                    <Text style={{ fontSize: 13.5, color: colors.textSecondary }} numberOfLines={2}>
+                      {step.offered.title} for {step.requested.title}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: colors.textMuted }}>
+                      {timeAgo(step.createdAt)}
+                    </Text>
+                  </Press>
+                ))}
+              </View>
+            ) : null}
+
             {respondError ? (
               <View style={{ marginTop: 16 }}>
                 <Notice
@@ -295,6 +368,14 @@ export default function OfferDetailScreen() {
               loading={respond.isPending}
               onPress={confirmAccept}
             />
+            {canCounter ? (
+              <ActionButton
+                kind="outline"
+                icon="swap-horizontal"
+                label="Counter offer"
+                onPress={openCounter}
+              />
+            ) : null}
             {o.conversationId ? (
               <ActionButton
                 kind="outline"
@@ -355,6 +436,13 @@ export default function OfferDetailScreen() {
               />
             ) : null}
           </>
+        ) : o.status === 'countered' && o.counterOfferId ? (
+          <ActionButton
+            kind="primary"
+            icon="swap-horizontal"
+            label="View the counter-offer"
+            onPress={() => router.push(`/(app)/offer/${o.counterOfferId}`)}
+          />
         ) : o.conversationId ? (
           <ActionButton
             kind="outline"

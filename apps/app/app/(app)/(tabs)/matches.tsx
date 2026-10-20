@@ -55,6 +55,7 @@ const STATUS_KIND: Record<OfferView['status'], 'neutral' | 'success' | 'danger' 
   rejected: 'danger',
   cancelled: 'neutral',
   expired: 'neutral',
+  countered: 'neutral',
 };
 
 /** Sentence-case labels; the API's lowercase enum is not user-facing copy. */
@@ -64,6 +65,7 @@ const STATUS_LABEL: Record<OfferView['status'], string> = {
   rejected: 'Declined',
   cancelled: 'Withdrawn',
   expired: 'Expired',
+  countered: 'Countered',
 };
 
 type IncomingFilter = 'all' | 'pending' | 'accepted' | 'rejected';

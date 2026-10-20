@@ -26,8 +26,10 @@ import {
 } from '@pandam/ui';
 
 import { AppHeader } from '@/components/AppHeader';
+import { useCelebrate } from '@/components/celebrate/CelebrationProvider';
 import { ErrorState } from '@/components/states';
 import { ApiError } from '@/lib/api/client';
+import { timeAgo } from '@/lib/format';
 import { mediaSrc } from '@/lib/api/media';
 import { useCreateDispute, useDisputes } from '@/lib/hooks/useReports';
 import { useCreateReview } from '@/lib/hooks/useReviews';
@@ -164,11 +166,27 @@ function StarPicker({ value, onChange }: { value: number; onChange: (n: number) 
   );
 }
 
+/** Plain-language line for one history event, from the viewer's point of view. */
+function eventLabel(e: BarterTransactionView['events'][number], partner: string): string {
+  const who = e.actorIsMe ? 'You' : partner;
+  switch (e.type) {
+    case 'accepted':
+      return `${who} accepted the offer`;
+    case 'confirmed':
+      return `${who} confirmed the exchange`;
+    case 'completed':
+      return 'Both of you confirmed — trade completed';
+    case 'cancelled':
+      return `${who} cancelled the trade`;
+  }
+}
+
 export default function TransactionDetailScreen() {
   const colors = useThemeColors();
 
   const router = useRouter();
   const toast = useToast();
+  const celebrate = useCelebrate();
   const { id } = useLocalSearchParams<{ id: string }>();
   const transaction = useTransaction(id);
   const setStatus = useSetTransactionStatus();
@@ -215,10 +233,31 @@ export default function TransactionDetailScreen() {
   const t = transaction.data;
   if (!t) return null;
 
-  const canStart = t.status === 'created';
-  const canComplete = t.status === 'in_progress';
+  const live = t.status === 'created' || t.status === 'in_progress';
+  // A trade completes only when BOTH people confirm; the server enforces it.
+  const canConfirm = live && !t.confirmedByMe;
+  const waitingForPartner = live && t.confirmedByMe;
   const canReview = t.status === 'completed' && !t.reviewedByMe && !reviewSubmitted;
   const open = t.status !== 'completed' && t.status !== 'cancelled';
+  const partner = t.counterparty.displayName;
+
+  const confirmExchange = () =>
+    setStatus.mutate(
+      { id: t.id, action: 'confirm' },
+      {
+        // Only the server's answer decides what we say — never assume success.
+        onSuccess: (res) => {
+          if (res.transaction.status === 'completed') {
+            celebrate('Trade completed');
+            toast.success('Trade completed — nice one.');
+          } else {
+            toast.success(`Confirmed. Waiting for ${partner} to confirm too.`);
+          }
+        },
+        onError: (e) =>
+          toast.error(e instanceof ApiError ? e.message : 'Could not confirm. Try again.'),
+      },
+    );
 
   return (
     <Screen
@@ -226,32 +265,26 @@ export default function TransactionDetailScreen() {
       padded={false}
       edges={['top', 'bottom']}
       footer={
-        canStart || canComplete ? (
+        canConfirm ? (
           <Stack gap="sm">
             <Button
-              label={canStart ? 'Mark as under way' : 'Mark as completed'}
+              label="Confirm exchange"
               size="lg"
               fullWidth
               loading={setStatus.isPending}
-              onPress={() =>
-                setStatus.mutate(
-                  { id: t.id, action: canStart ? 'start' : 'complete' },
-                  {
-                    onSuccess: () =>
-                      toast.success(
-                        canStart ? 'Trade marked as under way.' : 'Trade completed — nice one.',
-                      ),
-                  },
-                )
-              }
+              onPress={confirmExchange}
               leftIcon={<Ionicons name="checkmark-circle" size={17} color={colors.textInverse} />}
             />
             <Text variant="caption" tone="muted" center>
-              {canStart
-                ? 'Mark this once you have agreed where and when to swap.'
-                : 'Mark this once you both have what you agreed.'}
+              {t.confirmedByCounterparty
+                ? `${partner} has already confirmed. Confirm once you have what you agreed.`
+                : 'Confirm once you both have what you agreed. The trade completes when you both confirm.'}
             </Text>
           </Stack>
+        ) : waitingForPartner ? (
+          <Text variant="caption" tone="muted" center>
+            You confirmed. Waiting for {partner} to confirm — the trade completes when they do.
+          </Text>
         ) : undefined
       }
     >
@@ -306,6 +339,23 @@ export default function TransactionDetailScreen() {
             </View>
             <Side label="You get" title={t.youGot.title} tone="need" />
           </Row>
+
+          {/* ---------------------------------------------------- history -- */}
+          {t.events.length > 0 ? (
+            <Stack gap="sm">
+              <Text variant="h3">History</Text>
+              {t.events.map((e, i) => (
+                <Row key={`${e.type}-${i}`} justify="space-between" align="flex-start">
+                  <Text variant="bodySm" style={{ flexShrink: 1 }}>
+                    {eventLabel(e, partner)}
+                  </Text>
+                  <Text variant="caption" tone="muted">
+                    {timeAgo(e.createdAt)}
+                  </Text>
+                </Row>
+              ))}
+            </Stack>
+          ) : null}
 
           {open ? (
             <Button
@@ -395,8 +445,8 @@ export default function TransactionDetailScreen() {
                   </View>
                 ))}
                 <Text variant="caption" tone="muted">
-                  A person reviews every dispute. Keep talking in the chat if you can still sort it
-                  out between you.
+                  Your dispute is recorded on this trade. There is no review team to promise a reply
+                  yet, so keep talking in the chat if you can sort it out between you.
                 </Text>
               </Stack>
             </Card>
@@ -487,7 +537,7 @@ export default function TransactionDetailScreen() {
                 haptic.warning();
                 Alert.alert(
                   'Cancel this trade?',
-                  'Both items stay off the marketplace until one of you re-publishes them. This cannot be undone.',
+                  'Both items go back on the marketplace and the trade is closed. This cannot be undone.',
                   [
                     { text: 'Keep trading', style: 'cancel' },
                     {
@@ -496,7 +546,13 @@ export default function TransactionDetailScreen() {
                       onPress: () =>
                         setStatus.mutate(
                           { id: t.id, action: 'cancel' },
-                          { onSuccess: () => toast.show({ message: 'Trade cancelled.' }) },
+                          {
+                            onSuccess: () => toast.show({ message: 'Trade cancelled.' }),
+                            onError: (e) =>
+                              toast.error(
+                                e instanceof ApiError ? e.message : 'Could not cancel the trade.',
+                              ),
+                          },
                         ),
                     },
                   ],

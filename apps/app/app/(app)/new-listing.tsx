@@ -4,6 +4,8 @@ import { Text, View } from 'react-native';
 
 import { Press, Screen, layout, useToast } from '@pandam/ui';
 
+import { useCelebrate } from '@/components/celebrate/CelebrationProvider';
+import { ApiError } from '@/lib/api/client';
 import { ItemForm } from '@/components/ItemForm';
 import { useM } from '@/components/matches/MatchesUI';
 import { CornerDecor } from '@/components/profile/ProfileUI';
@@ -21,6 +23,7 @@ export default function NewListingScreen() {
   const create = useCreateItem('listing');
   const uploadImages = useUploadItemImages('listing');
   const toast = useToast();
+  const celebrate = useCelebrate();
 
   return (
     <Screen padded={false} edges={['top', 'bottom']} background={M.bg}>
@@ -85,9 +88,14 @@ export default function NewListingScreen() {
                   .mutateAsync({ itemId: res.item.id, uris: photos })
                   .catch((err) => {
                     console.warn('[new-listing] photo upload failed:', err);
-                    toast.error('Your listing was saved, but the photo could not be uploaded.');
+                    toast.error(
+                      err instanceof ApiError
+                        ? `Your listing was saved, but the photo failed: ${err.message}`
+                        : 'Your listing was saved, but the photo could not be uploaded.',
+                    );
                   });
               }
+              if (res.item.status === 'published') celebrate('Listing published');
               router.replace(`/(app)/listing/${res.item.id}`);
             },
           })
