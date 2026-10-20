@@ -18,6 +18,7 @@ import {
 import { Stack } from 'expo-router';
 import { useEffect } from 'react';
 
+import { IntroGate } from '@/components/intro/IntroGate';
 import { Splash } from '@/components/Splash';
 import { initMonitoring } from '@/lib/monitoring';
 import { ThemedStatusBar } from '@/lib/theme/ThemeBridge';
@@ -48,7 +49,9 @@ export default function RootLayout() {
   return (
     <AppProviders>
       <ThemedStatusBar />
-      {fontsLoaded ? <Stack screenOptions={{ headerShown: false }} /> : <Splash />}
+      <IntroGate>
+        {fontsLoaded ? <Stack screenOptions={{ headerShown: false }} /> : <Splash />}
+      </IntroGate>
     </AppProviders>
   );
 }
