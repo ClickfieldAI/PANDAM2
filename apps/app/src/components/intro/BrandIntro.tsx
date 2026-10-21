@@ -1,19 +1,11 @@
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  type LayoutChangeEvent,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-  Pressable,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { type LayoutChangeEvent, Pressable, View, useWindowDimensions } from 'react-native';
 import Animated, {
-  runOnJS,
-  useAnimatedReaction,
-  useAnimatedScrollHandler,
+  Easing,
   useAnimatedStyle,
   useSharedValue,
+  withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -24,24 +16,28 @@ import { BRAND } from './brand';
 import { frameAt, introLayout, progressOf } from './geometry';
 import { PaperBackground } from './PaperBackground';
 
-/** After landing on screen 2, hold this long, then go on into the app. A tap goes sooner. */
-const HOLD_MS = 2200;
-/** iOS only: pulling past screen 2 this far also continues. */
-const OVERSCROLL_PX = 36;
+/** Screen 1 (the P alone) stays this long before it moves on by itself. */
+const FIRST_HOLD_MS = 2000;
+/** The P travels into the full logo over this long. */
+const TRANSITION_MS = 1300;
+/** Screen 2 (the full logo) stays this long, then the intro hands over to the app. */
+const SECOND_HOLD_MS = 2000;
 
 const FILL = { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0 } as const;
 
 /**
- * Two screens, swiped horizontally, on ONE continuous cream paper:
+ * Two screens that play by themselves, on ONE continuous cream paper:
  *   1. the P symbol alone, centred;
  *   2. the complete official logo, centred, with the orange/black halftone shapes in the corners.
  *
- * The P is a real shared element. Swiping drives one progress value (0 to 1); `frameAt` in
+ * Timeline: the P alone for 2s, the transition, the full logo for 2s, then `onDone` (the gate
+ * fades the intro out into the app). A tap skips ahead.
+ *
+ * The P is a real shared element. One progress value (0 to 1) drives it; `frameAt` in
  * ./geometry turns it into every layer's position and opacity. The P from screen 1 travels and
  * resizes into the exact spot of the P inside the full logo; the wordmark and tagline are revealed
  * outward from it; the corner shapes slide in. Only at the very end does the intact logo fade in
  * as the travelling P fades out. They are aligned, so there is never a second P on screen.
- * Swiping back plays it in reverse.
  *
  * All positions come from the measured stage size and safe-area insets, never from fixed screen
  * sizes. Under "reduce motion" nothing travels: the two screens swap.
@@ -61,9 +57,9 @@ export function BrandIntro({ onDone }: { onDone: () => void }) {
   const H = stage.height;
   const L = introLayout(W, H, insets.top, insets.bottom);
 
-  const scrollRef = useRef<Animated.ScrollView>(null);
+  // The scroll-offset-like value `frameAt` reads: 0 = screen 1, W = screen 2.
   const x = useSharedValue(0);
-  const [page, setPage] = useState(0);
+  const stage2 = useRef(false);
   const finished = useRef(false);
 
   const finish = useCallback(() => {
@@ -71,30 +67,23 @@ export function BrandIntro({ onDone }: { onDone: () => void }) {
     finished.current = true;
     onDone();
   }, [onDone]);
-  const goToSecond = useCallback(() => {
-    scrollRef.current?.scrollTo({ x: W, animated: true });
-  }, [W]);
 
-  // Landing on screen 2 starts the hold timer; swiping back cancels it.
+  const startTransition = useCallback(() => {
+    if (stage2.current) return;
+    stage2.current = true;
+    x.set(withTiming(W, { duration: TRANSITION_MS, easing: Easing.inOut(Easing.cubic) }));
+  }, [W, x]);
+
+  // The whole sequence: hold, transition, hold, hand over. A tap skips to the next step.
   useEffect(() => {
-    if (page !== 1) return undefined;
-    const t = setTimeout(finish, HOLD_MS);
-    return () => clearTimeout(t);
-  }, [page, finish]);
-
-  const onScroll = useAnimatedScrollHandler((e) => {
-    x.value = e.contentOffset.x;
-  });
-  useAnimatedReaction(
-    () => Math.round(x.value / W),
-    (p, prev) => {
-      if (p !== prev) runOnJS(setPage)(p);
-    },
-    [W],
-  );
-  const onEndDrag = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (e.nativeEvent.contentOffset.x > W + OVERSCROLL_PX) finish();
-  };
+    const t1 = setTimeout(startTransition, FIRST_HOLD_MS);
+    const t2 = setTimeout(finish, FIRST_HOLD_MS + TRANSITION_MS + SECOND_HOLD_MS);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [startTransition, finish]);
+  const onTap = () => (stage2.current ? finish() : startTransition());
 
   /* ----- layers: every style reads the same progress through frameAt ------------------- */
   const travellingP = useAnimatedStyle(() => {
@@ -228,33 +217,13 @@ export function BrandIntro({ onDone }: { onDone: () => void }) {
         />
       </View>
 
-      {/* the swipe surface: transparent, it only supplies the gesture and the progress */}
-      <Animated.ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        scrollEventThrottle={16}
-        bounces
-        overScrollMode="never"
-        decelerationRate="fast"
-        onScroll={onScroll}
-        onScrollEndDrag={onEndDrag}
+      {/* tap surface: transparent, skips ahead */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="PANDAM MAATRAM, the modern barter app. Tap to continue."
+        onPress={onTap}
         style={FILL}
-      >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="PANDAM. Swipe left, or double tap, to continue."
-          onPress={goToSecond}
-          style={{ width: W, height: H }}
-        />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="PANDAM, the modern barter app. Tap to continue."
-          onPress={finish}
-          style={{ width: W, height: H }}
-        />
-      </Animated.ScrollView>
+      />
     </View>
   );
 }
