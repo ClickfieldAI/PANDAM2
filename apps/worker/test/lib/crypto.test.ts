@@ -73,8 +73,7 @@ describe('password hashing', () => {
   });
 
   it('returns false — never throws — for malformed Base64URL fields', async () => {
-    const badCharsX2 =
-      'pbkdf2x2$sha256$1000$not-valid-base64!!!$also-bad!!!$and-this-too!!!';
+    const badCharsX2 = 'pbkdf2x2$sha256$1000$not-valid-base64!!!$also-bad!!!$and-this-too!!!';
     const badCharsLegacy = 'pbkdf2$sha256$1000$not-valid-base64!!!$also-bad!!!';
     await expect(verifyPassword('anything', badCharsX2)).resolves.toBe(false);
     await expect(verifyPassword('anything', badCharsLegacy)).resolves.toBe(false);

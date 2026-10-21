@@ -156,8 +156,7 @@ describe('POST /api/v1/auth/login', () => {
     // one for the same password, generated with the exact PBKDF2-HMAC-SHA-256
     // primitive the old single-round code used.
     const legacyHash =
-      'pbkdf2$sha256$1000$FRYXGBkaGxwdHh8gISIjJA$' +
-      'whFpv0e7ByCgogX5LT14JSfcPkWfeEZpxzLfQ_-P_bg';
+      'pbkdf2$sha256$1000$FRYXGBkaGxwdHh8gISIjJA$' + 'whFpv0e7ByCgogX5LT14JSfcPkWfeEZpxzLfQ_-P_bg';
     await ctx.db
       .update(schema.credentials)
       .set({ passwordHash: legacyHash })
@@ -181,8 +180,7 @@ describe('POST /api/v1/auth/login', () => {
     const { data: regData } = await body<Ok<AuthSession>>(regRes);
 
     const legacyHash =
-      'pbkdf2$sha256$1000$FRYXGBkaGxwdHh8gISIjJA$' +
-      'whFpv0e7ByCgogX5LT14JSfcPkWfeEZpxzLfQ_-P_bg';
+      'pbkdf2$sha256$1000$FRYXGBkaGxwdHh8gISIjJA$' + 'whFpv0e7ByCgogX5LT14JSfcPkWfeEZpxzLfQ_-P_bg';
     await ctx.db
       .update(schema.credentials)
       .set({ passwordHash: legacyHash })

@@ -180,8 +180,7 @@ describe('/api/v1/users/me/change-password', () => {
     // Simulate an account created before the chained-PBKDF2 fix: the stored
     // hash is still the old single-round format for the same PASSWORD.
     const legacyHash =
-      'pbkdf2$sha256$1000$ZWZnaGlqa2xtbm9wcXJzdA$' +
-      'gwLToLIwENjvfVd5c6_4ezoT6nyYoWwgOY9kJbbCdDA';
+      'pbkdf2$sha256$1000$ZWZnaGlqa2xtbm9wcXJzdA$' + 'gwLToLIwENjvfVd5c6_4ezoT6nyYoWwgOY9kJbbCdDA';
     await ctx.db
       .update(schema.credentials)
       .set({ passwordHash: legacyHash })
