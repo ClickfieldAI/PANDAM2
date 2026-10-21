@@ -11,22 +11,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, ScrollView, View } from 'react-native';
+import { Alert, View } from 'react-native';
 
 import { type CreateReportInput, createReportSchema, z } from '@pandam/validation';
 import {
   Button,
   Field,
   GroupedRows,
+  KeyboardScrollView,
   ListRow,
   Notice,
   Screen,
   Stack,
   Text,
+  haptic,
   layout,
   radii,
   spacing,
-  haptic,
   useThemeColors,
 } from '@pandam/ui';
 
@@ -151,7 +152,7 @@ export default function ReportScreen() {
         <AppHeader title={`Report this ${noun}`} subtitle={params.label || undefined} back />
       </View>
 
-      <ScrollView
+      <KeyboardScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
@@ -284,7 +285,7 @@ export default function ReportScreen() {
             local emergency services rather than us.
           </Notice>
         </Stack>
-      </ScrollView>
+      </KeyboardScrollView>
     </Screen>
   );
 }

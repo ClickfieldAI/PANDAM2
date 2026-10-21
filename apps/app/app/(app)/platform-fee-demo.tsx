@@ -9,7 +9,7 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRef, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
 import { type DemoFeeTransactionView } from '@pandam/types';
 import {
@@ -17,6 +17,7 @@ import {
   Button,
   Card,
   Input,
+  KeyboardScrollView,
   Notice,
   Press,
   Row,
@@ -153,7 +154,7 @@ export default function PlatformFeeDemoScreen() {
         />
       </View>
 
-      <ScrollView
+      <KeyboardScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
@@ -431,7 +432,7 @@ export default function PlatformFeeDemoScreen() {
             </Card>
           </Stack>
         </Stack>
-      </ScrollView>
+      </KeyboardScrollView>
     </Screen>
   );
 }

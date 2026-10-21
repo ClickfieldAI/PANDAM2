@@ -4,17 +4,19 @@ import { registerSchema, usernameSchema, z, type RegisterInput } from '@pandam/v
 import { Link, useRouter } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
 import { useState } from 'react';
-import {
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  TextInput,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { Image, Platform, TextInput, View, useWindowDimensions } from 'react-native';
 
-import { Notice, Press, Screen, Text, haptic, useToast, useThemeColors } from '@pandam/ui';
+import {
+  KeyboardAvoid,
+  KeyboardScrollView,
+  Notice,
+  Press,
+  Screen,
+  Text,
+  haptic,
+  useThemeColors,
+  useToast,
+} from '@pandam/ui';
 
 import { AvatarPicker } from '@/components/AvatarPicker';
 import { OAuthButtons, OAuthDivider } from '@/components/brand/OAuthButtons';
@@ -521,11 +523,8 @@ export default function RegisterScreen() {
       edges={['top', 'bottom']}
       contentStyle={{ maxWidth: '100%' }}
     >
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
+      <KeyboardAvoid style={{ flex: 1 }}>
+        <KeyboardScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{ flexGrow: 1, alignItems: 'center' }}
           keyboardShouldPersistTaps="handled"
@@ -787,8 +786,8 @@ export default function RegisterScreen() {
               </Link>
             </View>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardScrollView>
+      </KeyboardAvoid>
     </Screen>
   );
 }

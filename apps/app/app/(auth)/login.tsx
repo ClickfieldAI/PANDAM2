@@ -4,18 +4,20 @@ import { loginSchema, type LoginInput } from '@pandam/validation';
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import {
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  TextInput,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { Image, Platform, TextInput, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Notice, Press, Screen, Text, haptic, useToast, useThemeColors } from '@pandam/ui';
+import {
+  KeyboardAvoid,
+  KeyboardScrollView,
+  Notice,
+  Press,
+  Screen,
+  Text,
+  haptic,
+  useThemeColors,
+  useToast,
+} from '@pandam/ui';
 
 import { OAuthButtons, OAuthDivider } from '@/components/brand/OAuthButtons';
 import { ApiError } from '@/lib/api/client';
@@ -360,11 +362,8 @@ export default function LoginScreen() {
       edges={['top', 'bottom']}
       contentStyle={{ maxWidth: '100%' }}
     >
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
+      <KeyboardAvoid style={{ flex: 1 }}>
+        <KeyboardScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{ flexGrow: 1, alignItems: 'center' }}
           keyboardShouldPersistTaps="handled"
@@ -516,8 +515,8 @@ export default function LoginScreen() {
               </View>
             </View>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardScrollView>
+      </KeyboardAvoid>
     </Screen>
   );
 }

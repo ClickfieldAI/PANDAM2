@@ -9,7 +9,7 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { type ComponentProps, type ReactNode, useEffect } from 'react';
-import { Image, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { Image, Text, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
   cancelAnimation,
@@ -21,7 +21,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
 
-import { Press, useMotionOK } from '@pandam/ui';
+import { KeyboardScrollView, Press, useMotionOK } from '@pandam/ui';
 
 import { useM } from '@/components/matches/MatchesUI';
 import { useThemeColors } from '@pandam/ui';
@@ -151,7 +151,7 @@ export function VerifyShell({
   return (
     <View style={{ flex: 1, backgroundColor: M.bg }}>
       {decor ? <DecorLayer>{decor}</DecorLayer> : null}
-      <ScrollView
+      <KeyboardScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
@@ -176,7 +176,7 @@ export function VerifyShell({
           </Press>
         ) : null}
         {children}
-      </ScrollView>
+      </KeyboardScrollView>
     </View>
   );
 }

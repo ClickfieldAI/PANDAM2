@@ -20,6 +20,7 @@ export { IconButton, type IconButtonProps } from './components/IconButton';
 export { Press, type PressProps, type PressStateStyles } from './components/Press';
 export { Gradient, type GradientProps } from './components/Gradient';
 export { Screen, type ScreenProps } from './components/Screen';
+export { KeyboardAvoid, KeyboardScrollView } from './components/KeyboardAvoid';
 export { Stack, Row, Divider, type StackProps, type DividerProps } from './components/layout';
 export { Card, type CardProps } from './components/Card';
 export { CoverTile, type CoverTileProps } from './components/CoverTile';

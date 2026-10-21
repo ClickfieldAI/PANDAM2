@@ -4,18 +4,18 @@ import { boundedString, usernameSchema, z, type PatchProfileInput } from '@panda
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-  type TextInputProps,
-} from 'react-native';
+import { Platform, Text, TextInput, View, type TextInputProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Notice, Press, useToast, useThemeColors, type ThemeColors } from '@pandam/ui';
+import {
+  KeyboardAvoid,
+  KeyboardScrollView,
+  Notice,
+  Press,
+  type ThemeColors,
+  useThemeColors,
+  useToast,
+} from '@pandam/ui';
 
 import { AvatarPicker, choosePhoto } from '@/components/AvatarPicker';
 import { useM } from '@/components/matches/MatchesUI';
@@ -164,11 +164,8 @@ export default function EditProfileScreen() {
     });
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: M.bg }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView
+    <KeyboardAvoid style={{ flex: 1, backgroundColor: M.bg }}>
+      <KeyboardScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 40 }}
@@ -517,7 +514,7 @@ export default function EditProfileScreen() {
             </Press>
           </View>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardScrollView>
+    </KeyboardAvoid>
   );
 }

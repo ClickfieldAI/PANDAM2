@@ -1,8 +1,15 @@
 import { createContext, type ReactNode, type Ref, useContext } from 'react';
-import { RefreshControl, ScrollView, type StyleProp, View, type ViewStyle } from 'react-native';
+import {
+  RefreshControl,
+  type ScrollView,
+  type StyleProp,
+  View,
+  type ViewStyle,
+} from 'react-native';
 import { type Edge, SafeAreaView } from 'react-native-safe-area-context';
 
 import { useThemeColors } from '../theme';
+import { KeyboardAvoid, KeyboardScrollView } from './KeyboardAvoid';
 import { layout, palette, spacing } from '../tokens';
 
 /**
@@ -78,50 +85,52 @@ export function Screen({
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: background }} edges={edges}>
       {layer}
-      {scroll ? (
-        <ScrollView
-          ref={scrollRef}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ flexGrow: 1, alignItems: 'stretch' }}
-          refreshControl={
-            onRefresh ? (
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                tintColor={colors.accent}
-                colors={[colors.accent]}
-              />
-            ) : undefined
-          }
-        >
-          <View style={inner}>{children}</View>
-        </ScrollView>
-      ) : (
-        <View style={[{ flex: 1 }, inner]}>{children}</View>
-      )}
+      <KeyboardAvoid>
+        {scroll ? (
+          <KeyboardScrollView
+            ref={scrollRef}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ flexGrow: 1, alignItems: 'stretch' }}
+            refreshControl={
+              onRefresh ? (
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor={colors.accent}
+                  colors={[colors.accent]}
+                />
+              ) : undefined
+            }
+          >
+            <View style={inner}>{children}</View>
+          </KeyboardScrollView>
+        ) : (
+          <View style={[{ flex: 1 }, inner]}>{children}</View>
+        )}
 
-      {footer ? (
-        <View
-          style={{
-            backgroundColor: colors.surface,
-            borderTopWidth: 1,
-            borderTopColor: colors.border,
-            paddingHorizontal: layout.gutter,
-            paddingTop: spacing.md,
-            paddingBottom: spacing.lg,
-            shadowColor: palette.ink,
-            shadowOpacity: 0.05,
-            shadowRadius: 10,
-            shadowOffset: { width: 0, height: -2 },
-            elevation: 8,
-          }}
-        >
-          <View style={{ width: '100%', maxWidth: layout.contentMaxWidth, alignSelf: 'center' }}>
-            {footer}
+        {footer ? (
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              borderTopWidth: 1,
+              borderTopColor: colors.border,
+              paddingHorizontal: layout.gutter,
+              paddingTop: spacing.md,
+              paddingBottom: spacing.lg,
+              shadowColor: palette.ink,
+              shadowOpacity: 0.05,
+              shadowRadius: 10,
+              shadowOffset: { width: 0, height: -2 },
+              elevation: 8,
+            }}
+          >
+            <View style={{ width: '100%', maxWidth: layout.contentMaxWidth, alignSelf: 'center' }}>
+              {footer}
+            </View>
           </View>
-        </View>
-      ) : null}
+        ) : null}
+      </KeyboardAvoid>
     </SafeAreaView>
   );
 }

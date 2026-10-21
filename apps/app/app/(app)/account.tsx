@@ -10,7 +10,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, ScrollView, View } from 'react-native';
+import { Alert, View } from 'react-native';
 
 import { changePasswordSchema, passwordSchema, z } from '@pandam/validation';
 import {
@@ -20,6 +20,7 @@ import {
   Field,
   GroupedRows,
   IconFrame,
+  KeyboardScrollView,
   ListRow,
   Notice,
   PasswordField,
@@ -28,11 +29,11 @@ import {
   SkeletonList,
   Stack,
   Text,
+  haptic,
   layout,
   spacing,
-  useToast,
-  haptic,
   useThemeColors,
+  useToast,
 } from '@pandam/ui';
 
 import { AppHeader } from '@/components/AppHeader';
@@ -179,7 +180,7 @@ export default function AccountScreen() {
         <AppHeader title="Account" subtitle={user?.email ?? undefined} back />
       </View>
 
-      <ScrollView
+      <KeyboardScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
@@ -440,7 +441,7 @@ export default function AccountScreen() {
             )}
           </Stack>
         </Stack>
-      </ScrollView>
+      </KeyboardScrollView>
     </Screen>
   );
 }
