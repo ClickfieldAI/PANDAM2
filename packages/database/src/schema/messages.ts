@@ -1,4 +1,4 @@
-import { index, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { index, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 import { createdAt, idColumn, nullableTimestamp } from './_shared';
 import { conversations } from './conversations';
@@ -23,6 +23,12 @@ export const messages = sqliteTable(
     body: text('body').notNull(),
     /** R2 object key for an attached photo, or `null` for a text-only message. */
     imageKey: text('image_key'),
+    /** R2 object key for an attached video (its `imageKey`, if any, is the thumbnail). */
+    videoKey: text('video_key'),
+    /** A shared location: WGS84 degrees, plus an optional human-readable place name. */
+    latitude: real('latitude'),
+    longitude: real('longitude'),
+    placeName: text('place_name'),
     /**
      * Chosen by the sender's app for each message it composes. (sender, clientId)
      * is unique, so re-sending the same message (a retry after a lost response,

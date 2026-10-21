@@ -9,10 +9,13 @@
  *   GET  /:id/messages            messages, oldest first
  *   POST /:id/messages            send a message
  *   POST /:id/attachments         upload an optional photo for a message (auth)
+ *   POST /:id/attachments/video   upload a video for a message (auth)
+ *   GET  /:id/contact             the other person's phone number, only while the trade is live
  *   GET  /:id/typing              whether another participant is typing
  *   POST /:id/typing              signal the caller's own typing state
  */
 import {
+  type ContactView,
   type ConversationView,
   type MessageView,
   type OwnerRef,
@@ -22,13 +25,17 @@ import { createMessageSchema, setTypingSchema } from '@pandam/validation';
 import { type Context, Hono } from 'hono';
 
 import { ApiError, sendOk } from '../../../lib/http';
-import { mediaUrl, readUploadedImage, requireMedia } from '../../../lib/media';
+import { readUploadedImage, readUploadedVideo, requireMedia } from '../../../lib/media';
 import { toOwnerRef } from '../../../lib/serialize';
+import { signedMediaUrl } from '../../../lib/signedMedia';
 import { parseBody } from '../../../lib/validate';
 import { authMiddleware, getAuth, requireAuth } from '../../../middleware/auth';
 import { assertCanInteract } from '../../../services/blocks';
+import { contactAccess } from '../../../services/contact';
 import { notify } from '../../../services/notify';
 import { type AppEnv } from '../../../types';
+
+type Env = AppEnv['Bindings'];
 
 export const conversationsRoute = new Hono<AppEnv>();
 
@@ -81,21 +88,29 @@ conversationsRoute.post('/:id/read', authMiddleware, requireAuth, async (c) => {
  * evidence taken from the other person's read marker, never assumed. Other
  * people's messages carry neither, so a reader never learns anything about
  * the sender's app, and nobody's read marker is exposed raw.
+ *
+ * Photos, video thumbnails and videos are private to the conversation: their URLs are signed
+ * and short-lived (see `lib/signedMedia.ts`), minted here only for a verified participant.
  */
-function toMessageView(
+async function toMessageView(
+  env: Env,
   m: {
     id: string;
     conversationId: string;
     senderId: string;
     body: string;
     imageKey: string | null;
+    videoKey: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    placeName: string | null;
     clientId: string | null;
     createdAt: number;
     editedAt: number | null;
   },
   meId: string,
   participants: { userId: string; lastReadAt: number | null }[],
-): MessageView {
+): Promise<MessageView> {
   const mine = m.senderId === meId;
   const others = participants.filter((p) => p.userId !== meId);
   return {
@@ -104,7 +119,12 @@ function toMessageView(
     senderId: m.senderId,
     isMine: mine,
     body: m.body,
-    imageUrl: m.imageKey ? mediaUrl(m.imageKey) : null,
+    imageUrl: m.imageKey ? await signedMediaUrl(env, m.imageKey) : null,
+    videoUrl: m.videoKey ? await signedMediaUrl(env, m.videoKey) : null,
+    location:
+      m.latitude !== null && m.longitude !== null
+        ? { latitude: m.latitude, longitude: m.longitude, placeName: m.placeName }
+        : null,
     createdAt: m.createdAt,
     editedAt: m.editedAt,
     ...(mine
@@ -126,9 +146,9 @@ conversationsRoute.get('/:id/messages', authMiddleware, requireAuth, async (c) =
     repos.messages.listByConversation(conversation.id),
     repos.conversations.listParticipants(conversation.id),
   ]);
-  const items = rows
-    .filter((m) => !m.deletedAt)
-    .map((m) => toMessageView(m, user.id, participants));
+  const items = await Promise.all(
+    rows.filter((m) => !m.deletedAt).map((m) => toMessageView(c.env, m, user.id, participants)),
+  );
   return sendOk(c, { items });
 });
 
@@ -144,14 +164,49 @@ conversationsRoute.post('/:id/attachments', authMiddleware, requireAuth, async (
   const { bytes, contentType, extension } = await readUploadedImage(c.req.raw);
   const key = `messages/${user.id}/${crypto.randomUUID()}.${extension}`;
   await bucket.put(key, bytes, { httpMetadata: { contentType } });
-  return sendOk(c, { imageKey: key, imageUrl: mediaUrl(key) }, 201);
+  return sendOk(c, { imageKey: key, imageUrl: await signedMediaUrl(c.env, key) }, 201);
+});
+
+/**
+ * Upload a video for a message BEFORE sending it; returns the key to pass as `videoKey`.
+ * Type and size are checked from the file's own bytes (MP4 / MOV / WebM, 40 MB).
+ */
+conversationsRoute.post('/:id/attachments/video', authMiddleware, requireAuth, async (c) => {
+  const { user } = getAuth(c);
+  const conversation = await requireParticipant(c, c.req.param('id'), user.id);
+  if (conversation.status === 'archived') {
+    throw new ApiError('unprocessable', 'This conversation is archived.');
+  }
+  const bucket = requireMedia(c.env);
+  const { bytes, contentType, extension } = await readUploadedVideo(c.req.raw);
+  const key = `messages/${user.id}/${crypto.randomUUID()}.${extension}`;
+  await bucket.put(key, bytes, { httpMetadata: { contentType } });
+  return sendOk(c, { videoKey: key, videoUrl: await signedMediaUrl(c.env, key) }, 201);
+});
+
+/**
+ * The other person's mobile number, for a Call / WhatsApp button. Released only while the
+ * trade this chat belongs to is accepted and live (see `services/contact.ts`); the answer
+ * is checked here on the server every time, never inferred from what the UI shows.
+ */
+conversationsRoute.get('/:id/contact', authMiddleware, requireAuth, async (c) => {
+  const { user } = getAuth(c);
+  const { repos } = c.get('ctx');
+  const conversation = await requireParticipant(c, c.req.param('id'), user.id);
+  const access = await contactAccess(c, conversation, user.id);
+  if (!access.allowed) {
+    throw new ApiError('forbidden', 'Contact details are not available for this trade.');
+  }
+  const profile = await repos.profiles.findByUserId(access.otherUserId);
+  const view: ContactView = { phone: profile?.phoneE164 ?? null };
+  return sendOk(c, view);
 });
 
 conversationsRoute.post('/:id/messages', authMiddleware, requireAuth, async (c) => {
   const { user } = getAuth(c);
   const { repos } = c.get('ctx');
   const conversation = await requireParticipant(c, c.req.param('id'), user.id);
-  const { body, imageKey, clientId } = await parseBody(c, createMessageSchema);
+  const { body, imageKey, videoKey, location, clientId } = await parseBody(c, createMessageSchema);
 
   // Retry safety, checked FIRST: if this exact message (same retry id) was
   // already stored, return it — even if the conversation has since been
@@ -166,7 +221,7 @@ conversationsRoute.post('/:id/messages', authMiddleware, requireAuth, async (c) 
       }
       return sendOk(
         c,
-        { message: toMessageView(existing, user.id, participants), replayed: true },
+        { message: await toMessageView(c.env, existing, user.id, participants), replayed: true },
         200,
       );
     }
@@ -182,6 +237,9 @@ conversationsRoute.post('/:id/messages', authMiddleware, requireAuth, async (c) 
   if (imageKey && !imageKey.startsWith(`messages/${user.id}/`)) {
     throw new ApiError('forbidden', 'That image was not uploaded by you.');
   }
+  if (videoKey && !videoKey.startsWith(`messages/${user.id}/`)) {
+    throw new ApiError('forbidden', 'That video was not uploaded by you.');
+  }
 
   let message;
   try {
@@ -190,6 +248,10 @@ conversationsRoute.post('/:id/messages', authMiddleware, requireAuth, async (c) 
       senderId: user.id,
       body: body?.trim() ?? '',
       imageKey: imageKey ?? null,
+      videoKey: videoKey ?? null,
+      latitude: location?.latitude ?? null,
+      longitude: location?.longitude ?? null,
+      placeName: location?.placeName ?? null,
       clientId: clientId ?? null,
     });
   } catch (error) {
@@ -199,7 +261,7 @@ conversationsRoute.post('/:id/messages', authMiddleware, requireAuth, async (c) 
     if (winner) {
       return sendOk(
         c,
-        { message: toMessageView(winner, user.id, participants), replayed: true },
+        { message: await toMessageView(c.env, winner, user.id, participants), replayed: true },
         200,
       );
     }
@@ -220,7 +282,7 @@ conversationsRoute.post('/:id/messages', authMiddleware, requireAuth, async (c) 
 
   return sendOk(
     c,
-    { message: toMessageView(message, user.id, participants), replayed: false },
+    { message: await toMessageView(c.env, message, user.id, participants), replayed: false },
     201,
   );
 });
@@ -270,12 +332,13 @@ async function hydrate(
   meId: string,
 ): Promise<ConversationView> {
   const { repos } = c.get('ctx');
-  const [participants, lastMessages, me] = await Promise.all([
+  const [participants, lastMessages, me, access] = await Promise.all([
     repos.conversations.listParticipants(conversation.id),
     repos.messages.listByConversation(conversation.id),
     repos.conversations
       .listParticipants(conversation.id)
       .then((ps) => ps.find((p) => p.userId === meId)),
+    contactAccess(c, conversation, meId),
   ]);
 
   const others = participants.filter((p) => p.userId !== meId);
@@ -296,9 +359,10 @@ async function hydrate(
     status: conversation.status as ConversationView['status'],
     offerId: conversation.offerId,
     participants: otherRefs,
-    lastMessage: last ? toMessageView(last, meId, participants) : null,
+    lastMessage: last ? await toMessageView(c.env, last, meId, participants) : null,
     unread: unreadCount > 0,
     unreadCount,
+    canContact: access.allowed,
     createdAt: conversation.createdAt,
     updatedAt: conversation.updatedAt,
   };

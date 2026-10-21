@@ -27,6 +27,12 @@ export const profiles = sqliteTable(
     locationCity: text('location_city'),
     locationRegion: text('location_region'),
     locationCountry: text('location_country'),
+    /**
+     * Private mobile number in E.164 (`+919876543210`). Never part of a public profile, listing or
+     * search response: it is released only to the other party of an accepted, still-active trade
+     * (see the Worker's `services/contact.ts`).
+     */
+    phoneE164: text('phone_e164'),
     createdAt,
     updatedAt,
   },

@@ -9,6 +9,10 @@
 # The localhost dev origins (3000 / 8081 / 19006) are always allowed.
 # CORS_ORIGINS=
 
+# Signs the short-lived URLs for private chat photos/videos. Any long random string;
+# REQUIRED in production (chat media will not load without it). Local dev has a built-in fallback.
+# MEDIA_URL_SECRET=
+
 # Observability (optional)
 SENTRY_DSN=
 POSTHOG_KEY=

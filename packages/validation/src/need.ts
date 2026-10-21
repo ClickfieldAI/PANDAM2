@@ -1,4 +1,5 @@
 import { boundedString, idSchema, itemTypeSchema, publishableStatusSchema, z } from './common';
+import { phoneSchema } from './phone';
 
 export const createNeedSchema = z.object({
   categoryId: idSchema('cat'),
@@ -6,6 +7,8 @@ export const createNeedSchema = z.object({
   title: boundedString(3, 120),
   description: boundedString(10, 4000),
   status: publishableStatusSchema.optional(),
+  /** The poster's mobile number; see `createListingSchema.phone`. */
+  phone: phoneSchema.optional(),
 });
 export type CreateNeedInput = z.infer<typeof createNeedSchema>;
 

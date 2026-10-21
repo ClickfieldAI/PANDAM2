@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { conversationsApi } from '@/lib/api/conversations';
+import { conversationsApi, type SendMessageInput } from '@/lib/api/conversations';
 import { qk } from '@/lib/query/keys';
 
 export function useConversations() {
@@ -22,6 +22,22 @@ export function useConversation(id: string | undefined) {
   });
 }
 
+/**
+ * The other person's number for the Call / WhatsApp buttons. Only asked for when the server
+ * already said `canContact` (and re-asked each time the screen opens, so a trade cancelled in the
+ * meantime stops offering it); a 403 simply means "not available" and is not retried.
+ */
+export function useContact(conversationId: string | undefined, canContact: boolean) {
+  return useQuery({
+    queryKey: [...qk.conversations.detail(conversationId ?? ''), 'contact'] as const,
+    queryFn: () => conversationsApi.contact(conversationId!),
+    enabled: !!conversationId && canContact,
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
+  });
+}
+
 export function useMessages(conversationId: string | undefined) {
   return useQuery({
     queryKey: qk.conversations.messages(conversationId ?? ''),
@@ -34,8 +50,7 @@ export function useMessages(conversationId: string | undefined) {
 export function useSendMessage(conversationId: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: { body?: string; imageKey?: string; clientId?: string }) =>
-      conversationsApi.sendMessage(conversationId, input),
+    mutationFn: (input: SendMessageInput) => conversationsApi.sendMessage(conversationId, input),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: qk.conversations.messages(conversationId) });
       void client.invalidateQueries({ queryKey: qk.conversations.all });

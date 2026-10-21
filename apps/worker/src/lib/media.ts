@@ -12,6 +12,9 @@ import { log } from './log';
 /** 8 MB. Phone cameras exceed this only for uncompressed originals. */
 export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
+/** 40 MB: a short phone clip. Larger files are refused before anything is stored. */
+export const MAX_VIDEO_BYTES = 40 * 1024 * 1024;
+
 /** Image formats recognised by their file signature ("magic bytes"). */
 export type SniffedImage = { contentType: string; extension: string };
 
@@ -109,6 +112,64 @@ export async function readUploadedImage(request: Request): Promise<UploadedImage
     });
     throw new ApiError('unprocessable', 'That file is not a valid JPEG, PNG, WebP or HEIC image.', {
       file: ['not a recognised image'],
+    });
+  }
+  return { bytes, contentType: sniffed.contentType, extension: sniffed.extension };
+}
+
+/** Video formats recognised by their file signature. */
+export type SniffedVideo = { contentType: string; extension: string };
+
+/**
+ * Identify a video from its first bytes: MP4/M4V/3GP and QuickTime (`ftyp` box) or WebM
+ * (EBML header). HEIC/HEIF/AVIF still images also use `ftyp`, so their brands are excluded.
+ */
+export function sniffVideo(bytes: ArrayBuffer): SniffedVideo | null {
+  const v = new Uint8Array(bytes, 0, Math.min(bytes.byteLength, 16));
+  if (v.length >= 4 && v[0] === 0x1a && v[1] === 0x45 && v[2] === 0xdf && v[3] === 0xa3) {
+    return { contentType: 'video/webm', extension: 'webm' };
+  }
+  if (v.length >= 12 && ascii(v, 4, 8) === 'ftyp') {
+    const brand = ascii(v, 8, 12);
+    const imageBrands = ['heic', 'heix', 'hevc', 'hevx', 'heim', 'heis', 'mif1', 'msf1', 'avif'];
+    if (imageBrands.includes(brand)) return null;
+    if (brand === 'qt  ') return { contentType: 'video/quicktime', extension: 'mov' };
+    return { contentType: 'video/mp4', extension: 'mp4' };
+  }
+  return null;
+}
+
+export interface UploadedVideo {
+  bytes: ArrayBuffer;
+  contentType: string;
+  extension: string;
+}
+
+/** Pull one video out of a `multipart/form-data` body (field `file`), validated like images. */
+export async function readUploadedVideo(request: Request): Promise<UploadedVideo> {
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    throw new ApiError('bad_request', 'Expected a multipart/form-data body with a `file` field.');
+  }
+  const file = form.get('file');
+  if (!(file instanceof File)) {
+    throw new ApiError('validation_error', 'No video was uploaded.', { file: ['is required'] });
+  }
+  if (file.size > MAX_VIDEO_BYTES) {
+    throw new ApiError('unprocessable', 'Videos must be 40 MB or smaller.', {
+      file: ['too large'],
+    });
+  }
+  const bytes = await file.arrayBuffer();
+  if (bytes.byteLength === 0) {
+    throw new ApiError('unprocessable', 'That video file was empty.', { file: ['is empty'] });
+  }
+  const sniffed = sniffVideo(bytes);
+  if (!sniffed) {
+    throw new ApiError('unprocessable', 'That file is not a valid MP4, MOV or WebM video.', {
+      file: ['not a recognised video'],
     });
   }
   return { bytes, contentType: sniffed.contentType, extension: sniffed.extension };

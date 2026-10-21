@@ -10,7 +10,10 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.pandam.app",
-      "usesAppleSignIn": true
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": ["whatsapp", "tel", "maps", "comgooglemaps"]
+      }
     },
     "android": {
       "package": "com.pandam.app",
@@ -40,7 +43,18 @@
           "color": "#079455"
         }
       ],
-      "expo-image-picker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "PANDAM needs your photo library so you can send photos and videos in chat and add pictures to your listings."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "PANDAM uses your location only when you choose to share it in a chat, so the person you are trading with can find the meeting spot."
+        }
+      ],
       "expo-web-browser",
       "expo-apple-authentication",
       [
@@ -56,7 +70,8 @@
           "recordAudioAndroid": false
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true

@@ -9,6 +9,7 @@
 export * from './common';
 export * from './auth';
 export * from './account';
+export * from './phone';
 export * from './profile';
 export * from './discovery';
 export * from './listing';

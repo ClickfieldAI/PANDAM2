@@ -16,6 +16,7 @@ import {
 } from '@pandam/ui';
 
 import { AppHeader } from '@/components/AppHeader';
+import { ConversationContactActions } from '@/components/chat/ContactActions';
 import { useM } from '@/components/matches/MatchesUI';
 import { CornerDecor } from '@/components/profile/ProfileUI';
 import { ErrorState } from '@/components/states';
@@ -428,12 +429,8 @@ export default function OfferDetailScreen() {
               onPress={openTransaction}
             />
             {o.conversationId ? (
-              <ActionButton
-                kind="outline"
-                icon="chatbubble-outline"
-                label={`Chat with ${first}`}
-                onPress={openChat}
-              />
+              // Message always; Call and WhatsApp once the server confirms the trade is live.
+              <ConversationContactActions conversationId={o.conversationId} onMessage={openChat} />
             ) : null}
           </>
         ) : o.status === 'countered' && o.counterOfferId ? (

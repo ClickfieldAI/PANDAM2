@@ -8,7 +8,7 @@
  *   PATCH /me   partial update (>= 1 field)
  *   POST  /me/avatar   upload a profile photo to R2
  */
-import { patchProfileSchema, putProfileSchema } from '@pandam/validation';
+import { patchProfileSchema, phoneSchema, putProfileSchema, z } from '@pandam/validation';
 import { type Context, Hono } from 'hono';
 
 import { ApiError, sendOk } from '../../../lib/http';
@@ -40,6 +40,21 @@ async function assertUsernameFree(
     throw new ApiError('conflict', 'That username is taken.', { username: ['already taken'] });
   }
 }
+
+/** The caller's own number. Private: it appears in no profile, listing or search response. */
+profilesRoute.get('/me/phone', async (c) => {
+  const { user } = getAuth(c);
+  const profile = await c.get('ctx').repos.profiles.findByUserId(user.id);
+  return sendOk(c, { phone: profile?.phoneE164 ?? null });
+});
+
+profilesRoute.put('/me/phone', async (c) => {
+  const { user } = getAuth(c);
+  const { phone } = await parseBody(c, z.object({ phone: phoneSchema }));
+  const updated = await c.get('ctx').repos.profiles.update(user.id, { phoneE164: phone });
+  if (!updated) throw new ApiError('not_found', 'Profile not found.');
+  return sendOk(c, { phone });
+});
 
 profilesRoute.put('/me', async (c) => {
   const { user } = getAuth(c);

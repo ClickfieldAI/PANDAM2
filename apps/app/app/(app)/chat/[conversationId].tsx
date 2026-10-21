@@ -1,17 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
+import * as VideoThumbnails from 'expo-video-thumbnails';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  FlatList,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Text as RNText,
-  TextInput,
-  View,
-} from 'react-native';
+import { FlatList, Image, Platform, Text as RNText, TextInput, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -22,6 +15,7 @@ import Animated, {
 import {
   Avatar,
   EmptyState,
+  KeyboardAvoid,
   Press,
   Reveal,
   Row,
@@ -35,6 +29,10 @@ import {
   useThemeColors,
 } from '@pandam/ui';
 
+import { AttachmentMenu } from '@/components/chat/AttachmentMenu';
+import { ContactActions } from '@/components/chat/ContactActions';
+import { LocationShareSheet, type PickedLocation } from '@/components/chat/LocationShareSheet';
+import { MessageMedia } from '@/components/chat/MessageMedia';
 import { useM } from '@/components/matches/MatchesUI';
 import { CornerDecor } from '@/components/profile/ProfileUI';
 import { IS_DEMO_DATA, demoConversations, demoMessages, demoQuery } from '@/dummy';
@@ -46,7 +44,13 @@ import { ApiError } from '@/lib/api/client';
 import { useSession } from '@/lib/auth/hooks';
 import { useChatOutbox } from '@/lib/chat/OutboxProvider';
 import { type ThreadItem, mergeThread, newClientId } from '@/lib/chat/outbox-core';
-import { mediaSrc, uploadMessageImage } from '@/lib/api/media';
+import { mediaSrc, uploadChatPhoto, uploadChatVideo } from '@/lib/api/media';
+import {
+  type PickedMedia,
+  checkPickedMedia,
+  mediaFileName,
+  mediaType,
+} from '@/lib/chat/attachments';
 import { dayLabel, timeOfDay } from '@/lib/format';
 import {
   useConversation,
@@ -131,6 +135,7 @@ function Bubble({
 
   const { message, startsRun, endsRun } = item;
   const mine = message.isMine;
+  const hasMedia = !!(message.imageUrl || message.videoUrl || message.location);
 
   return (
     <Reveal offset={8} style={{ alignSelf: 'stretch' }}>
@@ -154,30 +159,23 @@ function Bubble({
             borderBottomRightRadius: mine && !endsRun ? radii.xs : radii.lg,
             borderTopLeftRadius: !mine && !startsRun ? radii.xs : radii.lg,
             borderBottomLeftRadius: !mine && !endsRun ? radii.xs : radii.lg,
-            padding: message.imageUrl ? spacing.xs : undefined,
-            paddingHorizontal: message.imageUrl ? undefined : 16,
-            paddingVertical: message.imageUrl ? undefined : 11,
+            padding: hasMedia ? spacing.xs : undefined,
+            paddingHorizontal: hasMedia ? undefined : 16,
+            paddingVertical: hasMedia ? undefined : 11,
           }}
         >
-          {message.imageUrl ? (
-            <Image
-              source={{ uri: message.imageUrl }}
-              style={{
-                width: 200,
-                height: 150,
-                borderRadius: radii.md,
-                marginBottom: message.body ? spacing.xs : 0,
-              }}
-              resizeMode="cover"
-            />
+          {hasMedia ? (
+            <View style={{ marginBottom: message.body ? spacing.xs : 0 }}>
+              <MessageMedia message={message} mine={mine} />
+            </View>
           ) : null}
           {message.body ? (
             <Text
               variant="body"
               style={{
                 lineHeight: 22,
-                marginHorizontal: message.imageUrl ? spacing.xs : 0,
-                marginBottom: message.imageUrl ? spacing.xxs : 0,
+                marginHorizontal: hasMedia ? spacing.xs : 0,
+                marginBottom: hasMedia ? spacing.xxs : 0,
                 color: mine ? colors.textInverse : colors.textPrimary,
               }}
             >
@@ -343,9 +341,15 @@ export default function ChatScreen() {
   const markRead = useMarkConversationRead(conversationId!);
   const typing = useTypingIndicator(conversationId);
   const [draft, setDraft] = useState('');
-  const [pendingImage, setPendingImage] = useState<string | null>(null);
+  // A photo or video chosen but not yet sent: previewed in the composer, uploaded on Send.
+  const [pending, setPending] = useState<(PickedMedia & { thumbUri?: string | null }) | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [attachError, setAttachError] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [locationOpen, setLocationOpen] = useState(false);
+  const abortRef = useRef<(() => void) | null>(null);
+  const inputRef = useRef<TextInput>(null);
   const listRef = useRef<FlatList<Rendered>>(null);
 
   useEffect(() => {
@@ -369,24 +373,82 @@ export default function ChatScreen() {
   useEffect(() => {
     if (messages.data) reconcile(messages.data);
   }, [messages.data, reconcile]);
-  const canSend = (!!draft.trim() || !!pendingImage) && !send.isPending && !uploadingImage;
+  const canSend = (!!draft.trim() || !!pending) && !send.isPending && !uploadingImage;
   const [sendError, setSendError] = useState<string | null>(null);
 
-  const pickImage = async () => {
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
-    const uri = res.canceled ? null : res.assets[0]?.uri;
-    if (uri) {
-      setPendingImage(uri);
-      setAttachError(null);
+  /** Choose a photo or video from the gallery; check it here, preview it, upload on Send. */
+  const pickMedia = async () => {
+    setAttachError(null);
+    let res: ImagePicker.ImagePickerResult;
+    try {
+      res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images', 'videos'],
+        quality: 0.8,
+        allowsMultipleSelection: false,
+        videoExportPreset: ImagePicker.VideoExportPreset.H264_1280x720,
+      });
+    } catch {
+      setAttachError('Could not open your gallery. Check that PANDAM may access your photos.');
+      return;
     }
+    const asset = res.canceled ? null : res.assets[0];
+    if (!asset) return;
+    const picked: PickedMedia = {
+      kind: asset.type === 'video' ? 'video' : 'image',
+      uri: asset.uri,
+      fileName: asset.fileName,
+      mimeType: asset.mimeType,
+      fileSize: asset.fileSize,
+    };
+    const problem = checkPickedMedia(picked);
+    if (problem) {
+      setAttachError(problem);
+      return;
+    }
+    let thumbUri: string | null = null;
+    if (picked.kind === 'video') {
+      try {
+        thumbUri = (await VideoThumbnails.getThumbnailAsync(picked.uri, { time: 500 })).uri;
+      } catch {
+        // No thumbnail (unsupported here): the video still sends, with a plain play tile.
+      }
+    }
+    setPending({ ...picked, thumbUri });
+  };
+
+  const cancelUpload = () => abortRef.current?.();
+
+  const sendLocation = (place: PickedLocation) => {
+    send.mutate(
+      {
+        location: {
+          latitude: place.latitude,
+          longitude: place.longitude,
+          ...(place.placeName ? { placeName: place.placeName } : {}),
+        },
+        clientId: newClientId(),
+      },
+      {
+        onSuccess: () => {
+          setLocationOpen(false);
+          setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
+        },
+        onError: (e) => {
+          setLocationOpen(false);
+          setAttachError(
+            e instanceof ApiError ? e.message : 'Could not send your location. Try again.',
+          );
+        },
+      },
+    );
   };
 
   const handleSend = async () => {
     if (!canSend) return;
     const body = draft.trim();
-    const localImage = pendingImage;
+    const media = pending;
     setDraft('');
-    setPendingImage(null);
+    setPending(null);
     setAttachError(null);
     setSendError(null);
     typing.stopTyping();
@@ -394,35 +456,65 @@ export default function ChatScreen() {
     // A text message goes through the persistent outbox: it is saved on the
     // device first, shown as "sending", retried if the connection drops, and
     // de-duplicated by the server — so it can neither be lost nor doubled.
-    if (!localImage) {
+    if (!media) {
       outbox.enqueue(conversationId!, body);
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
       return;
     }
 
-    // A photo message needs its upload to finish first, so it is sent directly
-    // (not queued): if anything fails the draft and photo come BACK so nothing
+    // Photos and videos need their upload to finish first, so they are sent directly
+    // (not queued): if anything fails the draft and the attachment come BACK so nothing
     // the user composed is silently lost.
     const restore = (message: string) => {
       setDraft(body);
-      setPendingImage(localImage);
+      setPending(media);
       setSendError(message);
     };
     setUploadingImage(true);
-    let imageKey: string;
+    setProgress(0);
+    let imageKey: string | undefined;
+    let videoKey: string | undefined;
     try {
-      imageKey = (await uploadMessageImage(conversationId!, localImage)).imageKey;
+      const file = { uri: media.uri, name: mediaFileName(media), type: mediaType(media) };
+      if (media.kind === 'image') {
+        const up = uploadChatPhoto(conversationId!, file, setProgress);
+        abortRef.current = up.abort;
+        imageKey = (await up.promise).imageKey;
+      } else {
+        // The thumbnail is small: it takes the first tenth of the progress bar.
+        if (media.thumbUri) {
+          const t = uploadChatPhoto(
+            conversationId!,
+            { uri: media.thumbUri, name: 'thumbnail.jpg', type: 'image/jpeg' },
+            (f) => setProgress(f * 0.1),
+          );
+          abortRef.current = t.abort;
+          imageKey = (await t.promise).imageKey;
+        }
+        const v = uploadChatVideo(conversationId!, file, (f) => setProgress(0.1 + f * 0.9));
+        abortRef.current = v.abort;
+        videoKey = (await v.promise).videoKey;
+      }
     } catch (err) {
-      console.warn('[chat] photo upload failed:', err);
+      console.warn('[chat] attachment upload failed:', err);
+      abortRef.current = null;
       setUploadingImage(false);
-      setAttachError('Could not upload that photo. Try again.');
+      const cancelled = err instanceof ApiError && err.code === 'aborted';
+      setAttachError(
+        cancelled
+          ? 'Upload cancelled.'
+          : err instanceof ApiError
+            ? err.message
+            : `Could not upload that ${media.kind}. Check your connection and try again.`,
+      );
       restore('Your message was not sent.');
       return;
     }
+    abortRef.current = null;
     setUploadingImage(false);
 
     send.mutate(
-      { body: body || undefined, imageKey, clientId: newClientId() },
+      { body: body || undefined, imageKey, videoKey, clientId: newClientId() },
       {
         onSuccess: () => setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50),
         onError: (e) =>
@@ -526,7 +618,7 @@ export default function ChatScreen() {
         </View>
       </View>
 
-      {offer.data ? (
+      {conversation.data ? (
         <View
           style={{
             width: '100%',
@@ -536,6 +628,24 @@ export default function ChatScreen() {
             paddingTop: spacing.lg,
           }}
         >
+          <ContactActions
+            conversationId={conversationId!}
+            canContact={conversation.data.canContact}
+            onMessage={() => inputRef.current?.focus()}
+          />
+        </View>
+      ) : null}
+
+      {offer.data ? (
+        <View
+          style={{
+            width: '100%',
+            maxWidth: layout.contentMaxWidth,
+            alignSelf: 'center',
+            paddingHorizontal: layout.gutter,
+            paddingTop: spacing.md,
+          }}
+        >
           <TradeContextCard
             offer={offer.data}
             onOpen={() => router.push(`/(app)/offer/${offer.data!.id}`)}
@@ -543,11 +653,7 @@ export default function ChatScreen() {
         </View>
       ) : null}
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.select({ ios: 90, default: 0 })}
-      >
+      <KeyboardAvoid style={{ flex: 1 }}>
         <View style={{ flex: 1, position: 'relative' }}>
           {messages.isPending ? (
             <View style={{ paddingHorizontal: layout.gutter, paddingTop: spacing.lg }}>
@@ -605,7 +711,7 @@ export default function ChatScreen() {
             backgroundColor: colors.surface,
           }}
         >
-          {pendingImage ? (
+          {pending ? (
             <Row
               gap="sm"
               align="center"
@@ -613,22 +719,41 @@ export default function ChatScreen() {
             >
               <View style={{ position: 'relative' }}>
                 <Image
-                  source={{ uri: pendingImage }}
+                  source={{
+                    uri: pending.kind === 'video' ? (pending.thumbUri ?? undefined) : pending.uri,
+                  }}
                   style={{
-                    width: 48,
-                    height: 48,
+                    width: 56,
+                    height: 56,
                     borderRadius: radii.md,
                     borderWidth: layout.hairline,
                     borderColor: colors.border,
+                    backgroundColor: colors.surfaceMuted,
                   }}
                   resizeMode="cover"
                 />
+                {pending.kind === 'video' ? (
+                  <View
+                    pointerEvents="none"
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Ionicons name="play-circle" size={26} color="rgba(255,255,255,0.95)" />
+                  </View>
+                ) : null}
                 <Press
                   scale="none"
                   dim={false}
                   accessibilityRole="button"
-                  accessibilityLabel="Remove photo"
-                  onPress={() => setPendingImage(null)}
+                  accessibilityLabel={uploadingImage ? 'Cancel upload' : `Remove ${pending.kind}`}
+                  onPress={uploadingImage ? cancelUpload : () => setPending(null)}
                   hitSlop={6}
                   style={{
                     position: 'absolute',
@@ -645,9 +770,36 @@ export default function ChatScreen() {
                   <Ionicons name="close" size={13} color={colors.textInverse} />
                 </Press>
               </View>
-              <Text variant="caption" tone="muted">
-                {uploadingImage ? 'Uploading…' : 'Photo attached'}
-              </Text>
+              <View style={{ flex: 1 }}>
+                <Text variant="caption" tone="muted">
+                  {uploadingImage
+                    ? `Uploading ${pending.kind}… ${Math.round(progress * 100)}%`
+                    : pending.kind === 'video'
+                      ? 'Video ready to send'
+                      : 'Photo ready to send'}
+                </Text>
+                {uploadingImage ? (
+                  <View
+                    accessibilityRole="progressbar"
+                    accessibilityValue={{ min: 0, max: 100, now: Math.round(progress * 100) }}
+                    style={{
+                      marginTop: 6,
+                      height: 4,
+                      borderRadius: 2,
+                      backgroundColor: colors.borderSoft,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: `${Math.round(progress * 100)}%`,
+                        height: '100%',
+                        backgroundColor: M.red,
+                      }}
+                    />
+                  </View>
+                ) : null}
+              </View>
             </Row>
           ) : null}
 
@@ -681,16 +833,17 @@ export default function ChatScreen() {
               scale="lg"
               dim={false}
               accessibilityRole="button"
-              accessibilityLabel="Attach a photo"
+              accessibilityLabel="Attach a photo, video or location"
               disabled={uploadingImage}
-              onPress={() => void pickImage()}
+              onPress={() => setMenuOpen(true)}
               hitSlop={6}
               style={{ width: 40, height: 46, alignItems: 'center', justifyContent: 'center' }}
             >
-              <Ionicons name="attach" size={26} color={M.ink} />
+              <Ionicons name="add-circle-outline" size={28} color={M.ink} />
             </Press>
             <View style={{ flex: 1 }}>
               <TextInput
+                ref={inputRef}
                 placeholder="Message..."
                 placeholderTextColor={colors.textMuted}
                 value={draft}
@@ -719,7 +872,20 @@ export default function ChatScreen() {
             <SendButton active={canSend} disabled={!canSend} onPress={() => void handleSend()} />
           </Row>
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardAvoid>
+
+      <AttachmentMenu
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onPickMedia={() => void pickMedia()}
+        onShareLocation={() => setLocationOpen(true)}
+      />
+      <LocationShareSheet
+        visible={locationOpen}
+        onClose={() => setLocationOpen(false)}
+        onConfirm={sendLocation}
+        sending={send.isPending}
+      />
     </Screen>
   );
 }

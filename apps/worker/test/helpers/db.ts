@@ -31,11 +31,28 @@ export interface TestDb {
   close: () => void;
 }
 
-export async function makeTestDb(): Promise<TestDb> {
+export interface TestDbOptions {
+  /**
+   * Give every new profile a saved mobile number (the default). Listing and request creation
+   * require a number, so the many tests that are not ABOUT phone numbers get one for free, the
+   * way a real user who has already saved theirs would. Pass `false` to test the "no number yet"
+   * paths.
+   */
+  seedPhones?: boolean;
+}
+
+export async function makeTestDb(options: TestDbOptions = {}): Promise<TestDb> {
   const client = createClient({ url: ':memory:' });
   const drizzled = drizzle(client, { schema });
   await migrate(drizzled, { migrationsFolder: MIGRATIONS_DIR });
   await drizzled.run(sql`PRAGMA foreign_keys = ON`);
+  if (options.seedPhones !== false) {
+    await drizzled.run(sql`
+      CREATE TRIGGER test_seed_profile_phone AFTER INSERT ON profiles
+      WHEN NEW.phone_e164 IS NULL
+      BEGIN UPDATE profiles SET phone_e164 = '+919000000000' WHERE id = NEW.id; END
+    `);
+  }
 
   const db = drizzled as unknown as PandamDatabase;
   return {

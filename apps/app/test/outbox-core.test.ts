@@ -32,6 +32,8 @@ const server = (over: Partial<MessageView> = {}): MessageView => ({
   isMine: true,
   body: 'hello',
   imageUrl: null,
+  videoUrl: null,
+  location: null,
   createdAt: T0,
   editedAt: null,
   clientId: 'c-aaaaaaaa',

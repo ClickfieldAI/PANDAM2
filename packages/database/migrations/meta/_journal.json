@@ -148,6 +148,13 @@
       "when": 1792337137321,
       "tag": "0020_notifications_v2",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1792573122132,
+      "tag": "0021_contact_phone_and_chat_media",
+      "breakpoints": true
     }
   ]
 }

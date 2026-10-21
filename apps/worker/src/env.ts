@@ -16,6 +16,12 @@ export interface Env {
    */
   CORS_ORIGINS?: string;
 
+  /**
+   * Secret used to sign the short-lived URLs of private chat media (`messages/...` objects in R2).
+   * Required in production; development falls back to a fixed local value. See `lib/signedMedia.ts`.
+   */
+  MEDIA_URL_SECRET?: string;
+
   /** Secret (apps/worker/.dev.vars locally). Crash reports go here; unset = reporting is off. */
   SENTRY_DSN?: string;
   /** Optional build/version label attached to crash reports (e.g. a git sha). */

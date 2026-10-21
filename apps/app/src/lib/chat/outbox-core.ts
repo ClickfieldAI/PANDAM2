@@ -272,6 +272,8 @@ export function mergeThread(
         isMine: true,
         body: e.body,
         imageUrl: null,
+        videoUrl: null,
+        location: null,
         createdAt: e.createdAt,
         editedAt: null,
         clientId: e.clientId,

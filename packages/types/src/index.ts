@@ -371,8 +371,21 @@ export interface ConversationView {
   unread: boolean;
   /** How many messages from the other person the caller has not read yet. */
   unreadCount: number;
+  /**
+   * Whether the caller may call / WhatsApp the other person: true only while the trade this
+   * chat belongs to is accepted and still live (not cancelled, completed or blocked).
+   * The number itself is fetched separately (`GET /conversations/:id/contact`).
+   */
+  canContact: boolean;
   createdAt: number;
   updatedAt: number;
+}
+
+/** A place shared in chat. */
+export interface SharedLocation {
+  latitude: number;
+  longitude: number;
+  placeName: string | null;
 }
 
 export interface MessageView {
@@ -382,8 +395,12 @@ export interface MessageView {
   /** True if the caller sent this message. */
   isMine: boolean;
   body: string;
-  /** Attached photo, ready to fetch, or `null` for a text-only message. */
+  /** Attached photo (or a video's thumbnail), ready to fetch, or `null`. Short-lived signed URL. */
   imageUrl: string | null;
+  /** Attached video, ready to stream, or `null`. Short-lived signed URL. */
+  videoUrl: string | null;
+  /** A shared location, or `null`. */
+  location: SharedLocation | null;
   createdAt: number;
   editedAt: number | null;
   /**
@@ -663,4 +680,10 @@ export interface AdminAuditView {
   reason: string | null;
   metadata: Record<string, unknown> | null;
   createdAt: number;
+}
+
+/** `GET /api/v1/conversations/:id/contact` — the other person's number, only when permitted. */
+export interface ContactView {
+  /** E.164 (`+919876543210`), or `null` when they have not saved a number. */
+  phone: string | null;
 }

@@ -8,6 +8,7 @@ import {
   transactionTypeSchema,
   z,
 } from './common';
+import { phoneSchema } from './phone';
 
 export const createListingSchema = z
   .object({
@@ -21,6 +22,12 @@ export const createListingSchema = z
     transactionType: transactionTypeSchema.optional(),
     priceAmount: priceAmountSchema.optional(),
     priceCurrency: currencySchema.optional(),
+    /**
+     * The poster's mobile number (E.164 after parsing). Required unless the account already has
+     * one saved; the route enforces that, since the schema cannot see the profile. Private: it is
+     * never returned in listing responses.
+     */
+    phone: phoneSchema.optional(),
   })
   .superRefine((v, ctx) => {
     // A create always fully determines transactionType (defaulting to

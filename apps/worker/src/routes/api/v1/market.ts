@@ -40,6 +40,7 @@ import { hiddenOwnerIds } from '../../../services/blocks';
 import { alertListingMatches, type ListingForAlert } from '../../../services/listing-alerts';
 import { alertNeedMatches } from '../../../services/need-alerts';
 import { notify } from '../../../services/notify';
+import { requirePosterPhone, savePosterPhone } from '../../../services/phone';
 import { type AppEnv } from '../../../types';
 
 type Kind = 'listing' | 'need';
@@ -163,9 +164,12 @@ export function createMarketRoute(kind: Kind) {
 
   route.post('/', authMiddleware, requireAuth, async (c) => {
     const { user } = getAuth(c);
-    const input = await parseBody(c, cfg.createSchema);
+    // The mobile number is not a column of the item: it belongs to the poster's profile (private).
+    const { phone: suppliedPhone, ...input } = await parseBody(c, cfg.createSchema);
+    const poster = await requirePosterPhone(c, user.id, suppliedPhone);
     const { crud, one } = repo(c);
     const created = await crud.create({ ...input, ownerId: user.id });
+    await savePosterPhone(c, user.id, poster);
     const withRefs = await one(created.id);
     if (!withRefs) throw new ApiError('internal_error', 'Created item could not be loaded.');
     // A request that is live from the start tells people who have a match.

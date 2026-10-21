@@ -158,6 +158,8 @@ for (const item of items) {
     title: item.title,
     description: item.description,
     status: 'published',
+    // Listings and requests require a poster's mobile number (a fake demo one here).
+    phone: '+919000000000',
     ...(item.kind === 'listing' && item.pricing
       ? {
           transactionType: item.pricing.transactionType,

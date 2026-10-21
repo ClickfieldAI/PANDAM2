@@ -10,6 +10,10 @@ export interface CreateMessageInput {
   senderId: string;
   body: string;
   imageKey?: string | null;
+  videoKey?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  placeName?: string | null;
   clientId?: string | null;
 }
 

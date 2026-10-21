@@ -12,21 +12,22 @@ import { Ionicons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, Platform, ScrollView, Switch, Text as RNText, View } from 'react-native';
+import { Alert, Platform, Switch, Text as RNText, View } from 'react-native';
 
 import { type MarketItem } from '@pandam/types';
 import {
   Button,
   Card,
   Field,
+  KeyboardScrollView,
   Notice,
   Press,
   Row,
   Stack,
   Text,
+  haptic,
   layout,
   spacing,
-  haptic,
   useThemeColors,
 } from '@pandam/ui';
 import { boundedString, itemTypeSchema, z } from '@pandam/validation';
@@ -35,6 +36,13 @@ import { AddCategorySheet } from '@/components/AddCategorySheet';
 import { GuideRail } from '@/components/brand/GuideRail';
 import { useM } from '@/components/matches/MatchesUI';
 import { PhotoPicker } from '@/components/PhotoPicker';
+import {
+  EMPTY_PHONE,
+  PhoneField,
+  type PhoneValue,
+  phoneValueFrom,
+  phoneValueToE164,
+} from '@/components/PhoneField';
 import { ApiError } from '@/lib/api/client';
 import {
   allowSaving,
@@ -47,6 +55,7 @@ import {
 } from '@/lib/drafts';
 import { TYPE_LABEL } from '@/lib/format';
 import { useCategories } from '@/lib/hooks/useCategories';
+import { useMyPhone } from '@/lib/hooks/useMyPhone';
 import { categoryIcon, typeIcon } from '@/lib/icons';
 
 /** Same cap as `priceAmountSchema` in @pandam/validation (paise). */
@@ -99,6 +108,12 @@ export interface ItemFormSubmit {
    * Available for both a listing's own photos and a need's reference photos.
    */
   photos?: string[];
+  /**
+   * The poster's mobile number in E.164. Required on CREATE (a listing or request cannot go live
+   * without a way to reach its owner once a trade is agreed); never sent on edit. Private: it is
+   * released only to the other party of an accepted trade.
+   */
+  phone?: string;
 }
 
 const TRANSACTION_TYPE_LABEL: Record<TransactionTypeOption, string> = {
@@ -239,6 +254,18 @@ export function ItemForm({ kind, mode, initial, submitting, error, onSubmit }: I
   const [photos, setPhotos] = useState<string[]>([]);
 
   const [addingCategory, setAddingCategory] = useState(false);
+
+  // The mobile number: collected on create, pre-filled from the saved one, validated before submit.
+  const needsPhone = mode === 'create';
+  const savedPhone = useMyPhone();
+  // `null` until the person edits it: until then the field shows the saved number (if any).
+  const [typedPhone, setTypedPhone] = useState<PhoneValue | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const phone = typedPhone ?? (savedPhone.data ? phoneValueFrom(savedPhone.data) : EMPTY_PHONE);
+  const changePhone = (next: PhoneValue) => {
+    setPhoneError(null);
+    setTypedPhone(next);
+  };
   const blank: FormValues = {
     categoryId: '',
     type: 'service',
@@ -366,6 +393,18 @@ export function ItemForm({ kind, mode, initial, submitting, error, onSubmit }: I
   const guideDone = !categoryId ? 0 : photos.length === 0 ? 1 : !detailsDone ? 2 : 3;
 
   const submit = handleSubmit((v) => {
+    let e164: string | null = null;
+    if (needsPhone) {
+      e164 = phoneValueToE164(phone);
+      if (!e164) {
+        setPhoneError(
+          phone.national.trim()
+            ? 'Enter a valid mobile number, e.g. +91 98765 43210.'
+            : 'Enter your mobile number so people you trade with can reach you.',
+        );
+        return;
+      }
+    }
     const isBarter = v.transactionType === 'barter';
     onSubmit({
       categoryId: v.categoryId,
@@ -374,6 +413,7 @@ export function ItemForm({ kind, mode, initial, submitting, error, onSubmit }: I
       description: v.description.trim(),
       status: v.publish ? 'published' : 'draft',
       photos,
+      ...(e164 ? { phone: e164 } : {}),
       ...(isHave
         ? {
             transactionType: v.transactionType,
@@ -385,15 +425,23 @@ export function ItemForm({ kind, mode, initial, submitting, error, onSubmit }: I
     });
   });
 
+  // The server re-checks the number; if it refuses it, say so at the field, not in a generic banner.
+  const serverPhoneError = error instanceof ApiError ? error.details?.phone?.[0] : undefined;
   const formError =
-    error instanceof ApiError ? error.message : error ? 'Could not save. Try again.' : null;
+    error instanceof ApiError
+      ? serverPhoneError
+        ? null
+        : error.message
+      : error
+        ? 'Could not save. Try again.'
+        : null;
 
   const optionFill = isHave ? ('red' as const) : ('black' as const);
 
   if (!hydrated) return <View style={{ flex: 1 }} />;
 
   return (
-    <ScrollView
+    <KeyboardScrollView
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{
@@ -608,6 +656,22 @@ export function ItemForm({ kind, mode, initial, submitting, error, onSubmit }: I
           />
         </View>
 
+        {/* --------------------------------------------------------- contact -- */}
+        {needsPhone ? (
+          <View>
+            <StepLabel
+              n={isHave ? 6 : 5}
+              label="How can traders reach you?"
+              hint="Shared only with the person you agree a trade with, and only after they accept."
+            />
+            <PhoneField
+              value={phone}
+              onChange={changePhone}
+              error={phoneError ?? (serverPhoneError ? 'Enter a valid mobile number.' : undefined)}
+            />
+          </View>
+        ) : null}
+
         {/* --------------------------------------------------------- publish -- */}
         <Card padded>
           <Controller
@@ -680,6 +744,6 @@ export function ItemForm({ kind, mode, initial, submitting, error, onSubmit }: I
           </Press>
         ) : null}
       </Stack>
-    </ScrollView>
+    </KeyboardScrollView>
   );
 }

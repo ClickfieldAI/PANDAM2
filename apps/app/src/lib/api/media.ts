@@ -12,6 +12,7 @@ import { Platform } from 'react-native';
 import { clientEnv } from '@/lib/env';
 
 import { api } from './client';
+import { type UploadFile, uploadWithProgress } from './upload';
 import { type MarketKind } from './market';
 
 /** Absolute URL for an API-relative media path. Passes through absolute URLs. */
@@ -85,5 +86,41 @@ export async function uploadMessageImage(conversationId: string, uri: string) {
   return api.upload<{ imageKey: string; imageUrl: string }>(
     `/api/v1/conversations/${conversationId}/attachments`,
     await imageForm(uri),
+  );
+}
+
+/** Where chat media goes, and what comes back. */
+export interface ChatPhotoUpload {
+  imageKey: string;
+  imageUrl: string;
+}
+export interface ChatVideoUpload {
+  videoKey: string;
+  videoUrl: string;
+}
+
+/** Upload a chat photo (or a video's thumbnail) with progress. */
+export function uploadChatPhoto(
+  conversationId: string,
+  file: UploadFile,
+  onProgress?: (fraction: number) => void,
+) {
+  return uploadWithProgress<ChatPhotoUpload>(
+    `/api/v1/conversations/${conversationId}/attachments`,
+    file,
+    onProgress,
+  );
+}
+
+/** Upload a chat video with progress. */
+export function uploadChatVideo(
+  conversationId: string,
+  file: UploadFile,
+  onProgress?: (fraction: number) => void,
+) {
+  return uploadWithProgress<ChatVideoUpload>(
+    `/api/v1/conversations/${conversationId}/attachments/video`,
+    file,
+    onProgress,
   );
 }
