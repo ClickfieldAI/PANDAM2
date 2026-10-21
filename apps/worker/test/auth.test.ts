@@ -174,6 +174,56 @@ describe('POST /api/v1/auth/login', () => {
     expect(row?.passwordHash.startsWith('pbkdf2x2$sha256$')).toBe(true);
     expect(row?.passwordHash).not.toBe(legacyHash);
   });
+
+  it('survives concurrent logins against the same legacy hash without corrupting the upgrade', async () => {
+    const app = ctx.makeApp();
+    const regRes = await register(app);
+    const { data: regData } = await body<Ok<AuthSession>>(regRes);
+
+    const legacyHash =
+      'pbkdf2$sha256$1000$FRYXGBkaGxwdHh8gISIjJA$' +
+      'whFpv0e7ByCgogX5LT14JSfcPkWfeEZpxzLfQ_-P_bg';
+    await ctx.db
+      .update(schema.credentials)
+      .set({ passwordHash: legacyHash })
+      .where(eq(schema.credentials.userId, regData.user.id));
+
+    // Five simultaneous logins race to read the (still-legacy) hash and
+    // each tries to upgrade it — the concern is two concurrent
+    // `updateHash` writes interleaving into something that doesn't match
+    // the password at all, not just "which one wins".
+    const results = await Promise.all([1, 2, 3, 4, 5].map(() => login(app)));
+    for (const res of results) {
+      expect(res.status).toBe(200);
+    }
+
+    const row = await ctx.db.query.credentials.findFirst({
+      where: eq(schema.credentials.userId, regData.user.id),
+    });
+    expect(row?.passwordHash.startsWith('pbkdf2x2$sha256$')).toBe(true);
+
+    // The decisive check: whatever hash concurrent writes left behind must
+    // still actually verify the real password — a corrupted interleave
+    // would show up here as a login failure, not as a visible exception.
+    const after = await login(app);
+    expect(after.status).toBe(200);
+  });
+
+  it('never exposes the password hash or its format in any auth response body', async () => {
+    const app = ctx.makeApp();
+    const regRes = await register(app);
+    const regText = await regRes.clone().text();
+    expect(regText).not.toMatch(/pbkdf2|passwordHash|password_hash/i);
+
+    const loginRes = await login(app);
+    const loginText = await loginRes.clone().text();
+    expect(loginText).not.toMatch(/pbkdf2|passwordHash|password_hash/i);
+
+    const { data } = await body<Ok<AuthSession>>(regRes);
+    const meRes = await app.request('/api/v1/auth/me', { headers: auth(data.token) }, testEnv);
+    const meText = await meRes.clone().text();
+    expect(meText).not.toMatch(/pbkdf2|passwordHash|password_hash/i);
+  });
 });
 
 describe('sessions', () => {

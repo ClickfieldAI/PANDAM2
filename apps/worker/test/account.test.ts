@@ -7,6 +7,7 @@
  */
 import { newId, schema } from '@pandam/database';
 import { type AuthSession } from '@pandam/types';
+import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { makeTestDb, testEnv, type TestDb } from './helpers/db';
@@ -171,6 +172,38 @@ describe('/api/v1/users/me/change-password', () => {
       .makeApp()
       .request('/api/v1/auth/me', { headers: bearer(otherToken) }, testEnv);
     expect(theirs.status).toBe(401);
+  });
+
+  it('accepts the CURRENT password even when it is still in the legacy pbkdf2 format', async () => {
+    const me = await register('legacychanger');
+
+    // Simulate an account created before the chained-PBKDF2 fix: the stored
+    // hash is still the old single-round format for the same PASSWORD.
+    const legacyHash =
+      'pbkdf2$sha256$1000$ZWZnaGlqa2xtbm9wcXJzdA$' +
+      'gwLToLIwENjvfVd5c6_4ezoT6nyYoWwgOY9kJbbCdDA';
+    await ctx.db
+      .update(schema.credentials)
+      .set({ passwordHash: legacyHash })
+      .where(eq(schema.credentials.userId, me.user.id));
+
+    // `assertPassword` (shared by change-password and account deletion) must
+    // authenticate against the legacy hash just as login does.
+    const res = await post('/api/v1/users/me/change-password', me.token, {
+      currentPassword: PASSWORD,
+      newPassword: 'brand new pw 99',
+    });
+    expect(res.status).toBe(200);
+
+    const row = await ctx.db.query.credentials.findFirst({
+      where: eq(schema.credentials.userId, me.user.id),
+    });
+    // The new password hash is current-format — a legacy-era account is
+    // fully migrated the moment it changes its password, not just on login.
+    expect(row?.passwordHash.startsWith('pbkdf2x2$sha256$')).toBe(true);
+
+    expect((await login(me.user.email, PASSWORD)).status).toBe(401);
+    expect((await login(me.user.email, 'brand new pw 99')).status).toBe(200);
   });
 });
 
