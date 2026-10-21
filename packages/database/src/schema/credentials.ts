@@ -9,10 +9,12 @@ import { users } from './users';
  * credential types (OAuth, passkeys) can be added later as sibling tables
  * without reshaping `users`.
  *
- * `passwordHash` is a self-describing string:
- *   `pbkdf2$sha256$<iterations>$<salt_b64url>$<hash_b64url>`
- * so the KDF parameters can be raised over time and credentials re-hashed on
- * the user's next successful login. It is NEVER returned by the API.
+ * `passwordHash` is a self-describing string — current format:
+ *   `pbkdf2x2$sha256$<iterationsPerRound>$<salt1_b64url>$<salt2_b64url>$<hash_b64url>`
+ * (an older single-round `pbkdf2$sha256$<iterations>$<salt>$<hash>` format is
+ * still verified, never written — see apps/worker/src/lib/crypto.ts) so the
+ * KDF parameters can be raised over time and credentials re-hashed on the
+ * user's next successful login. It is NEVER returned by the API.
  *
  * One row per user (1:1). `ON DELETE cascade` — deleting the user removes it.
  */

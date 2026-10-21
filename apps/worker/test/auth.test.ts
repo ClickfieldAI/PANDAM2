@@ -1,4 +1,6 @@
 import { type AuthSession, type AuthenticatedUser } from '@pandam/types';
+import { schema } from '@pandam/database';
+import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { makeTestDb, testEnv, type TestDb } from './helpers/db';
@@ -142,6 +144,35 @@ describe('POST /api/v1/auth/login', () => {
     expect(strip((await body<Err>(missing)).error)).toEqual(
       strip((await body<Err>(wrongPw)).error),
     );
+  });
+
+  it('logs in with a legacy pbkdf2 (single-round) hash and transparently upgrades it', async () => {
+    const app = ctx.makeApp();
+    const regRes = await register(app);
+    const { data: regData } = await body<Ok<AuthSession>>(regRes);
+
+    // Simulate an account created before the chained-PBKDF2 fix: overwrite
+    // the freshly-created (current-format) hash with a real legacy-format
+    // one for the same password, generated with the exact PBKDF2-HMAC-SHA-256
+    // primitive the old single-round code used.
+    const legacyHash =
+      'pbkdf2$sha256$1000$FRYXGBkaGxwdHh8gISIjJA$' +
+      'whFpv0e7ByCgogX5LT14JSfcPkWfeEZpxzLfQ_-P_bg';
+    await ctx.db
+      .update(schema.credentials)
+      .set({ passwordHash: legacyHash })
+      .where(eq(schema.credentials.userId, regData.user.id));
+
+    const res = await login(app);
+    expect(res.status).toBe(200);
+
+    const row = await ctx.db.query.credentials.findFirst({
+      where: eq(schema.credentials.userId, regData.user.id),
+    });
+    // Upgraded to the current two-round format on successful login — not
+    // left as the legacy hash.
+    expect(row?.passwordHash.startsWith('pbkdf2x2$sha256$')).toBe(true);
+    expect(row?.passwordHash).not.toBe(legacyHash);
   });
 });
 

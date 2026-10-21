@@ -574,8 +574,11 @@ describe('credentials at rest', () => {
     const cred = (await ctx.db.select().from(schema.credentials))[0]!;
     expect(cred.passwordHash).not.toContain('a valid pw 12');
     const [scheme, hash, iterations] = cred.passwordHash.split('$');
-    expect(scheme).toBe('pbkdf2');
+    expect(scheme).toBe('pbkdf2x2');
     expect(hash).toBe('sha256');
+    // Per-round iterations — the Workers runtime rejects a single PBKDF2
+    // call above 100,000 (see crypto.ts), so this is now the per-round
+    // floor, not a single-call total.
     expect(Number(iterations)).toBeGreaterThanOrEqual(100_000);
     // Two accounts with the same password get different hashes (per-user salt).
     await user(app, 'Ben');
